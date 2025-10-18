@@ -44,7 +44,15 @@ class KuduClient( OAuthHTTPClient ):
         super().__init__( oauth_resource=OAuthResourceIDs.Arm, base_url=scm_url, *args, **kwargs)
 
     def get_env_variables(self):
+        """Get environment variables from the Kudu environment page.
 
+        Returns:
+            A dictionary containing environment variable key-value pairs
+
+        Raises:
+            ScmRequestFailedException: An error occurred accessing the Kudu API
+
+        """
         response = self._send_request( f"/Env", method="GET" )
         if response.status_code != 200:
             logging.error( "%s error on SCM API request to get environment variables"
@@ -67,7 +75,15 @@ class KuduClient( OAuthHTTPClient ):
         return parser.get_env_variables()
 
     def get_processes(self):
+        """Get all processes running on the app service.
 
+        Returns:
+            A list of dictionaries containing process information
+
+        Raises:
+            ScmRequestFailedException: An error occurred accessing the Kudu API
+
+        """
         response = self._send_request( f"/api/processes",
                                     method="GET" )
         if response.status_code != 200:
@@ -78,7 +94,18 @@ class KuduClient( OAuthHTTPClient ):
         return response.json()
 
     def get_process(self, pid):
+        """Get details about a specific process.
 
+        Args:
+            pid - (str) The process ID to fetch
+
+        Returns:
+            A dictionary containing process information
+
+        Raises:
+            ScmRequestFailedException: An error occurred accessing the Kudu API
+
+        """
         response = self._send_request( f"/api/processes/{pid}",
                                     method="GET" )
         if response.status_code != 200:
@@ -89,7 +116,18 @@ class KuduClient( OAuthHTTPClient ):
         return response.json()
 
     def get_process_dump(self, pid):
+        """Get a memory dump of a specific process.
 
+        Args:
+            pid - (str) The process ID to dump
+
+        Returns:
+            bytes - The raw process memory dump
+
+        Raises:
+            ScmRequestFailedException: An error occurred accessing the Kudu API
+
+        """
         response = self._send_request( f"/api/processes/{pid}/dump",
                                     method="GET" )
         if response.status_code != 200:
@@ -100,6 +138,18 @@ class KuduClient( OAuthHTTPClient ):
         return response.content
 
     def ls(self, path):
+        """List directory contents.
+
+        Args:
+            path - (str) The path to list
+
+        Returns:
+            A list of dictionaries containing file/directory information
+
+        Raises:
+            ScmRequestFailedException: An error occurred accessing the Kudu API
+
+        """
         response = self._send_request( f"/api/vfs/{path}",
                                     method="GET" )
         if response.status_code != 200:
@@ -110,6 +160,18 @@ class KuduClient( OAuthHTTPClient ):
         return response.json()
 
     def get_file(self, path):
+        """Get the contents of a file.
+
+        Args:
+            path - (str) The file path to read
+
+        Returns:
+            bytes - The raw file contents
+
+        Raises:
+            ScmRequestFailedException: An error occurred accessing the Kudu API
+
+        """
         response = self._send_request( f"/api/vfs/{path}",
                                     method="GET" )
         if response.status_code != 200:
@@ -121,9 +183,16 @@ class KuduClient( OAuthHTTPClient ):
 
     def command( self, command, directory=None ):
         """Execute a command via the Kudu API.
-        
+
+        Args:
+            command - (str) The command to execute
+            directory - (str) Optional directory to execute the command in
+
         Returns:
             A dict containing the results of the command
+
+        Raises:
+            Exception: An error occurred executing the command
 
         """
         body={
@@ -158,10 +227,16 @@ class KuduClient( OAuthHTTPClient ):
         return res
     
     def get_setting( self, setting ):
-        """Get setting
-        
+        """Get a specific Kudu setting.
+
+        Args:
+            setting - (str) The name of the setting to retrieve
+
         Returns:
-            A dict containing the settings
+            bytes - The setting value
+
+        Raises:
+            Exception: An error occurred accessing the Kudu API
 
         """
         

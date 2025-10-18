@@ -122,9 +122,29 @@ class TokenService( object ):
                 logging.info( "Tried to use a token from the cache but none exists" )
 
     def set_tenant( self, tenant ):
+        """
+            Set the tenant for the token service
+
+            Args:
+                - tenant - (string) The tenant ID to set
+
+            Returns: None
+        """
         self._tenant=tenant
 
     def set_scope(self, scopes, default, profile, offline_access, openid):
+        """
+            Set the scopes for the token service
+
+            Args:
+                - scopes - (list) List of scopes to request
+                - default - (bool) If true, request the default scope
+                - profile - (bool) If true, request the profile scope
+                - offline_access - (bool) If true, request the offline_access scope
+                - openid - (bool) If true, request the openid scope
+
+            Returns: None
+        """
         self.scopes=scopes
         self.default_scope=default
         self.profile_scope=profile
@@ -132,9 +152,30 @@ class TokenService( object ):
         self.openid_scope=openid
 
     def switch_client( self, client_id ):
+        """
+            Switch the client ID used by the token service
+
+            Args:
+                - client_id - (string) The new client ID to use
+
+            Returns: None
+        """
         self._client_id=client_id
 
     def refresh_token( self ):
+        """
+            Force a token refresh using the refresh token flow
+
+            Args:
+                None
+
+            Returns:
+                string - The new access token
+
+            Raises:
+                Exception: If the credential type is not "user", if using the token broker,
+                          or if no refresh token is present
+        """
         if self.credential_object.credentialType != "user":
             raise Exception("Cannot refresh a token for a non user credential type")
         if self.use_token_broker:
@@ -293,6 +334,12 @@ class TokenService( object ):
         return token
 
     def get_client_id(self):
+        """
+            Get the current client ID of the token service
+
+            Returns:
+                string - The client ID
+        """
         return self._client_id
 
     def _raw_token( self ):

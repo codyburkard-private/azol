@@ -196,6 +196,12 @@ class OAuthHTTPClient:
         return self._current_token
 
     def get_client_id( self ):
+        """
+            Get the current client ID of the HTTP client
+
+            Returns:
+                string - The client ID
+        """
         return self.token_service.get_client_id()
 
     def switch_client(self, client_id):
@@ -260,7 +266,10 @@ class OAuthHTTPClient:
 
     def _set_current_token(self, token):
         """
-            internal: Set the current token
+            Internal method to set the current token
+
+            Args:
+                - token - (string) The token to set as current
 
             Returns:
                 None
@@ -270,7 +279,19 @@ class OAuthHTTPClient:
     def _send_request( self, path=None, query_parameters=None, data=None, method="GET",
                        json=None, url=None, headers=None ):
         """
-            Internal method. Send request
+            Internal method to send an HTTP request with OAuth authentication
+
+            Args:
+                - path - (string) The API path to call
+                - query_parameters - (dict) Query parameters to include in the request
+                - data - (dict) Data to send in the request body
+                - method - (string) HTTP method (GET, POST, PUT, DELETE, etc.)
+                - json - (dict) JSON data to send in the request body
+                - url - (string) Full URL to call (overrides base_url + path)
+                - headers - (dict) Additional headers to include in the request
+
+            Returns:
+                requests.Response object
         """
         if query_parameters is None:
             query_parameters={}
@@ -318,14 +339,16 @@ class OAuthHTTPClient:
         return response
 
     def post( self, path, headers=None, json=None, query_parameters=None ):
-        """Make a get request .
+        """Make a POST request.
 
         Args:
-            - path - (string) The graph API path.
-            - headers - (dict) A Dictionary of the headers to be sent in the request
+            - path - (string) The API path
+            - headers - (dict) A dictionary of the headers to be sent in the request
+            - json - (dict) JSON data to send in the request body
+            - query_parameters - (dict) Query parameters for the request
 
         Returns:
-           Request.Response object from the GET request
+           requests.Response object from the POST request
 
         """
         response = self._send_request(  path, headers=headers, query_parameters=query_parameters, json=json, method="POST" )

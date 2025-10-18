@@ -913,6 +913,18 @@ class ArmClient( OAuthHTTPClient ):
         return deployments
 
     def get_current_user_pim_eligibility(self, scope):
+        """Get PIM eligibility for the current user at a given scope.
+
+        Args:
+            scope - (str) The scope to check PIM eligibility for
+
+        Returns:
+            A dictionary containing PIM role eligibility information
+
+        Raises:
+            ArmRequestFailedException: An error occurred accessing the ARM API
+
+        """
         response = self._send_request( f"{scope}/providers/Microsoft.Authorization/roleEligibilityScheduleInstances",
                                        query_parameters={ "api-version": "2020-10-01",
                                                          "$filter": "asTarget()"},
@@ -952,8 +964,17 @@ class ArmClient( OAuthHTTPClient ):
         return descendants
     
     def get_app_settings( self, resource_id ):
-        """
-            Get a dictionary containing key-values for all app service app settings.
+        """Get all app settings for an app service or function.
+
+        Args:
+            resource_id - (str) The complete resource ID of the app service
+
+        Returns:
+            A dictionary containing key-value pairs of app settings
+
+        Raises:
+            ArmRequestFailedException: An error occurred accessing the ARM API
+
         """
         response = self._send_request( f"{resource_id}/config/appsettings/list",
                                     query_parameters={ "api-version": "2024-04-01"},
@@ -968,8 +989,17 @@ class ArmClient( OAuthHTTPClient ):
         return settings
 
     def get_app_service_processes(self, resource_id):
-        """
-           Get all processes running on the app service.
+        """Get all processes running on an app service.
+
+        Args:
+            resource_id - (str) The complete resource ID of the app service
+
+        Returns:
+            A list of dictionaries containing process information
+
+        Raises:
+            ArmRequestFailedException: An error occurred accessing the ARM API
+
         """
         response = self._send_request( f"{resource_id}/processes",
                                     query_parameters={ "api-version": "2024-04-01"},
@@ -984,12 +1014,21 @@ class ArmClient( OAuthHTTPClient ):
         return processes["value"]
 
     def get_app_service_environment_variables(self, resource_id):
-        """
-           Get environment variales of the default process for an app service
-           of function. Uses the ARM API. Only works for Windows as of may 2025 -
-           alternatively, use kudu for linux with kuduClient
+        """Get environment variables of the default process for an app service or function.
 
-           resource_id: the resource id of an app service
+        Uses the ARM API. Only works for Windows as of May 2025 -
+        alternatively, use kudu for Linux with KuduClient.
+
+        Args:
+            resource_id - (str) The resource ID of an app service
+
+        Returns:
+            A dictionary containing environment variables
+
+        Raises:
+            AzolArmUnsupportedException: If the app service is running on Linux
+            ArmRequestFailedException: An error occurred accessing the ARM API
+
         """
         app_svc=self.get_app_service(resource_id)
         if 'linux' in app_svc.kind:
@@ -1004,11 +1043,18 @@ class ArmClient( OAuthHTTPClient ):
         return environment_variables        
 
     def get_app_service_process(self, resource_id, process_id):
-        """
-           Get details about the process running on the app service.
+        """Get details about a specific process running on an app service.
 
-           resource_id: the resource id of an app service
-           process_id: the process id to fetch
+        Args:
+            resource_id - (str) The resource ID of an app service
+            process_id - (str) The process ID to fetch
+
+        Returns:
+            A dictionary containing process information
+
+        Raises:
+            ArmRequestFailedException: An error occurred accessing the ARM API
+
         """
         response = self._send_request( f"{resource_id}/processes/{process_id}",
                                     query_parameters={ "api-version": "2024-04-01"},
@@ -1023,11 +1069,18 @@ class ArmClient( OAuthHTTPClient ):
         return process
 
     def get_app_service_process_dump(self, resource_id, process_id):
-        """
-            Call the ARM API to dump the process memory on an app service
+        """Get a process memory dump from an app service.
 
-            resource_id: the resource id of an app service
-            process_id: the process id to fetch
+        Args:
+            resource_id - (str) The resource ID of an app service
+            process_id - (str) The process ID to dump
+
+        Returns:
+            bytes - The raw process memory dump
+
+        Raises:
+            ArmRequestFailedException: An error occurred accessing the ARM API
+
         """
         response = self._send_request( f"{resource_id}/processes/{process_id}/dump",
                                     query_parameters={ "api-version": "2024-04-01"},
@@ -1042,8 +1095,17 @@ class ArmClient( OAuthHTTPClient ):
         return process_bytes
 
     def get_app_service(self, resource_id):
-        """
-            Get a specific app service, as well as its configurations and auth settings.
+        """Get a specific app service with its configurations and auth settings.
+
+        Args:
+            resource_id - (str) The complete resource ID of the app service
+
+        Returns:
+            GenericResource object containing the app service with config and auth settings
+
+        Raises:
+            ArmRequestFailedException: An error occurred accessing the ARM API
+
         """
         app_service = self.get_resource(resource_id)
         
@@ -1076,9 +1138,14 @@ class ArmClient( OAuthHTTPClient ):
         return app_service
 
     def get_app_services_with_easy_auth(self):
-        """
-            Get all app services, as well as their configurations and auth settings. Only
-            return the app services with easy auth
+        """Get all app services that have Easy Auth enabled.
+
+        Returns:
+            A list of GenericResource objects for app services with Easy Auth enabled
+
+        Raises:
+            ArmRequestFailedException: An error occurred accessing the ARM API
+
         """
         app_services = self.get_app_services()
         easy_auth_as=[]
@@ -1088,9 +1155,14 @@ class ArmClient( OAuthHTTPClient ):
         return easy_auth_as
 
     def get_functions_with_easy_auth(self):
-        """
-            Get all functions, as well as their configurations and auth settings. Only
-            return the functions with easy auth
+        """Get all Azure Functions that have Easy Auth enabled.
+
+        Returns:
+            A list of GenericResource objects for functions with Easy Auth enabled
+
+        Raises:
+            ArmRequestFailedException: An error occurred accessing the ARM API
+
         """
         functions = self.get_functions()
         funcs=[]
@@ -1100,8 +1172,14 @@ class ArmClient( OAuthHTTPClient ):
         return funcs
 
     def get_functions(self):
-        """
-            Get all functions, as well as their configurations and auth settings.
+        """Get all Azure Functions with their configurations and auth settings.
+
+        Returns:
+            A list of GenericResource objects containing function apps
+
+        Raises:
+            ArmRequestFailedException: An error occurred accessing the ARM API
+
         """
         app_services_and_functions = self.get_resources(resource_type="Microsoft.Web/sites")
         app_services = []
@@ -1154,8 +1232,14 @@ class ArmClient( OAuthHTTPClient ):
         return app_services
 
     def get_app_services(self):
-        """
-            Get all app services, as well as their configurations and auth settings.
+        """Get all app services with their configurations and auth settings.
+
+        Returns:
+            A list of GenericResource objects containing app services
+
+        Raises:
+            ArmRequestFailedException: An error occurred accessing the ARM API
+
         """
         app_services_and_functions = self.get_resources(resource_type="Microsoft.Web/sites")
         app_services = []

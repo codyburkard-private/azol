@@ -20,6 +20,20 @@ class GraphClient( OAuthHTTPClient ):
         super().__init__(  oauth_resource=OAuthResourceIDs.Graph, base_url=base_url, *args, **kwargs )
 
     def _send_request( self, *args, success_code=200, **kwargs ):
+        """
+            Internal method to send a request to the Graph API with error handling
+
+            Args:
+                - success_code - (int) The expected HTTP status code for success
+                - *args - Additional positional arguments to pass to parent _send_request
+                - **kwargs - Additional keyword arguments to pass to parent _send_request
+
+            Returns:
+                requests.Response object
+
+            Raises:
+                GraphRequestFailedException: If the response status code doesn't match success_code
+        """
         response = super()._send_request(*args, **kwargs)
         if response.status_code != success_code:
             logging.error( "Error on GRAPH API request. Raw error: %s ", str(response.content))
@@ -410,6 +424,22 @@ class GraphClient( OAuthHTTPClient ):
         raise GraphRequestFailedException()
 
     def get_all_users(self, select=[], filter=None, fast=False):
+        """Get all users in the directory.
+
+        Args:
+            select - (list) A list of json attributes that should be returned from all users.
+                    if this is None, the select query parameter will not be used in the request
+
+            filter - (str) A raw string containing a filter expression for the graph request
+
+            fast - (bool) If True, speed up collection using multiple threads
+
+        Returns:
+            A list of objects containing user information
+
+        Raises:
+            GraphRequestFailedException: An error occurred accessing the Graph API
+        """
         if fast:
             results=asyncio.run(self._get_all_users_async())
         else:
@@ -535,9 +565,13 @@ class GraphClient( OAuthHTTPClient ):
     def _gets_all_service_principals( self, select=[], filter=None ):
         """Get all service principals in the directory.
 
+        Internal method - not implemented.
+
         Args:
-            select - (list) - a list of json attributes that should be returned from all group.
+            select - (list) - a list of json attributes that should be returned from all service principals.
                     if this is None, the select query parameter will not be used in the request
+            filter - (str) - a filter expression for the graph request
+
         Returns:
             A list of objects containing object id and displayName of all service principals
 

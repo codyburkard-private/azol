@@ -6,6 +6,15 @@ from azol.utils import string_between
 from azol.models.sp_login_init_model import SPLoginModel
 
 def start_azure_portal_login(*args):
+    """
+        Initiate an Azure Portal login flow
+
+        Args:
+            - *args - Additional arguments (not currently used)
+
+        Returns:
+            SPLoginModel - Login initialization parameters including redirect URI and cookies
+    """
     # get a nonce cookie from portal, and have the portal initiate a login flow
     resp=requests.get("https://portal.azure.com/signin/idpRedirect.js/?feature.argsubscriptions=true&feature.showservicehealthalerts=true&feature.prefetchtokens=true&feature.internalgraphapiversion=true&feature.selftoken=true&feature.globalresourcefilter=true&feature.msaljs=true&feature.fetchpolicyforrestypes=true&feature.testcrosscloudpuid=true&feature.useredirecthint=true&feature.usetenanthint=true&idpc=0")
 
@@ -24,6 +33,18 @@ def start_azure_portal_login(*args):
     return init_params
 
 def end_azure_portal_login(sp_init_args, code, state, id_token):
+    """
+        Complete an Azure Portal login flow
+
+        Args:
+            - sp_init_args - (dict) Login initialization arguments from start_azure_portal_login
+            - code - (string) Authorization code from the OAuth flow
+            - state - (string) State parameter from the OAuth flow
+            - id_token - (string) ID token from the OAuth flow
+
+        Returns:
+            string - SPA auth code from the portal login
+    """
     data={
         "state": state,
         "code": code,

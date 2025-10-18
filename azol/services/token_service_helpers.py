@@ -17,6 +17,20 @@ from azol.utils.auth_utils import start_azure_portal_login, end_azure_portal_log
 
 def build_scope_string(oauth_resource, scopes=[], default_scope=None, openid_scope=None,
                        profile_scope=None, offline_access_scope=None ):
+    """
+        Build a scope string for OAuth token requests
+
+        Args:
+            - oauth_resource - (string) The OAuth resource ID
+            - scopes - (list) List of scopes to request
+            - default_scope - (bool) If true, use the default scope
+            - openid_scope - (bool) If true, include the openid scope
+            - profile_scope - (bool) If true, include the profile scope
+            - offline_access_scope - (bool) If true, include the offline_access scope
+
+        Returns:
+            string - The formatted scope string for the token request
+    """
     extension = ""
     if openid_scope:
         extension+=f" openid"
@@ -35,6 +49,18 @@ def build_scope_string(oauth_resource, scopes=[], default_scope=None, openid_sco
     return extended_scope_string
 
 def ests_portal_login_flow(tenant, username, cookies, useragent=UserAgents.Windows_Edge):
+    """
+        Perform an Azure Portal login flow using ESTS cookies
+
+        Args:
+            - tenant - (string) The tenant ID to log in to
+            - username - (string) The username to log in with
+            - cookies - (dict) Dictionary containing ESTS cookies
+            - useragent - (string) The user agent string to use for requests
+
+        Returns:
+            dictionary - Token data from the portal login
+    """
 
     resp=requests.get(f"https://portal.azure.com:443/signin/index/@{tenant}?feature.argsubscriptions=true&feature.showservicehealthalerts=true&feature.prefetchtokens=true&feature.internalgraphapiversion=true&feature.selftoken=true&feature.globalresourcefilter=true&feature.msaljs=true&feature.fetchpolicyforrestypes=true&feature.testcrosscloudpuid=true&feature.useredirecthint=true&feature.usetenanthint=true&idpc=0")
 
@@ -293,6 +319,21 @@ def ests_portal_login_flow(tenant, username, cookies, useragent=UserAgents.Windo
     return portal_token_data
 
 def ests_login_flow( tenant, client_id, ests, ests_persistent, username, scope_string, redirect_url ):
+    """
+        Perform an ESTS-based login flow with MFA
+
+        Args:
+            - tenant - (string) The tenant ID to log in to
+            - client_id - (string) The OAuth client ID
+            - ests - (string) ESTS cookie value
+            - ests_persistent - (string) ESTS persistent cookie value
+            - username - (string) The username to log in with
+            - scope_string - (string) The OAuth scope string
+            - redirect_url - (string) The redirect URI for the OAuth flow
+
+        Returns:
+            dictionary - Token data including access_token and refresh_token
+    """
     # if ESTSAUTH and ESTSAUTHPERSISTENT are both present, we can only use one.
     # request will fail if both are used. preference should be ESTSAUTHPERSISTENT
     if ests_persistent is not None:
@@ -595,6 +636,16 @@ def ests_login_flow( tenant, client_id, ests, ests_persistent, username, scope_s
     return new_token_data
 
 def get_portal_tokens(tenant, username):
+    """
+        Get portal tokens through interactive login with password and MFA
+
+        Args:
+            - tenant - (string) The tenant ID to log in to
+            - username - (string) The username to log in with
+
+        Returns:
+            dictionary - Token data from the portal login including ESTS cookies
+    """
     ests=None
     ests_persistent=None
     # Azure portal has a weird auth code flow. Perform extra steps
@@ -931,6 +982,19 @@ def get_portal_tokens(tenant, username):
     return token_data
 
 def auth_code_flow(tenant, username, client_id, redirect_url, scope_string):
+    """
+        Perform an OAuth authorization code flow with interactive login
+
+        Args:
+            - tenant - (string) The tenant ID to log in to
+            - username - (string) The username to log in with
+            - client_id - (string) The OAuth client ID
+            - redirect_url - (string) The redirect URI for the OAuth flow
+            - scope_string - (string) The OAuth scope string
+
+        Returns:
+            dictionary - Token data including access_token, refresh_token, and ESTS cookies
+    """
     ests=None
     ests_persistent=None
     if client_id == FOCIClients.AzurePortal:

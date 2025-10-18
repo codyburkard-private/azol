@@ -38,6 +38,18 @@ class AzolX509:
 
 
 def string_between(whole_string, start_string, end_string, include_start=False):
+    """
+        Extract a substring between two markers in a string
+
+        Args:
+            - whole_string - (string) The string to search in
+            - start_string - (string) The starting marker
+            - end_string - (string) The ending marker
+            - include_start - (bool) If True, include the start_string in the result
+
+        Returns:
+            string - The substring between the markers
+    """
     i=whole_string.index(start_string)
     z=whole_string[i:].index(end_string)+i
     if not include_start:
@@ -45,13 +57,16 @@ def string_between(whole_string, start_string, end_string, include_start=False):
     sub_string=whole_string[i:z]
     return sub_string
 
-def get_tenant_id( tenant_name ):
+def get_tenant_id( tenant_domain ):
     """
         Call the openid-configuration of a domain name to check if it exists in Entra ID as a tenant
-
+        
+        Args:
+            - tenant_domain - (string) The domain of a tenant
+        
         Returns: (string) tenant ID if the domain name is registered, or None
     """
-    response = requests.get(f"https://login.microsoftonline.com/{tenant_name}/"
+    response = requests.get(f"https://login.microsoftonline.com/{tenant_domain}/"
                             "v2.0/.well-known/openid-configuration", timeout=10)
 
     if response.status_code == 400:
@@ -113,6 +128,25 @@ def create_x509_cert(common_name, password=None, country_name=None, state=None, 
                      org_name=None, private_key_size=2048, subject_alternative_name=None,
                      cert_name="azol_cert", private_key_public_exponent=65537,
                      cert_valid_days=365):
+    """
+        Create a self-signed X509 certificate
+
+        Args:
+            - common_name - (string) The common name for the certificate
+            - password - (string) Password to encrypt the private key. If None, no encryption
+            - country_name - (string) Country name for the certificate
+            - state - (string) State/province name for the certificate
+            - locality - (string) Locality name for the certificate
+            - org_name - (string) Organization name for the certificate
+            - private_key_size - (int) Size of the RSA private key in bits
+            - subject_alternative_name - (string) Subject alternative name for the certificate
+            - cert_name - (string) Name for the certificate
+            - private_key_public_exponent - (int) Public exponent for the RSA key
+            - cert_valid_days - (int) Number of days the certificate should be valid
+
+        Returns:
+            AzolX509 object containing the public and private certificates
+    """
 
     private_key = rsa.generate_private_key(
         public_exponent=private_key_public_exponent,
@@ -169,6 +203,16 @@ def create_x509_cert(common_name, password=None, country_name=None, state=None, 
     return res
 
 def decrypt_easy_auth_token(encrypted_b64_data, hex_key):
+    """
+        Decrypt an Easy Auth token using the encryption key
+
+        Args:
+            - encrypted_b64_data - (string) Base64-encoded encrypted token data
+            - hex_key - (string) Hex-encoded encryption key
+
+        Returns:
+            dictionary - The decrypted token contents as a JSON object
+    """
     key = bytes.fromhex(hex_key)
     encrypted_token_and_iv_bytes = base64.b64decode(encrypted_b64_data)
     iv = encrypted_token_and_iv_bytes[0:16]
@@ -198,6 +242,15 @@ def get_easy_auth_user_tokens(zumo_token, site_url):
     return res.json()
 
 def create_easy_auth_subject(identifier):
+    """
+        Create an Easy Auth subject identifier from a string
+
+        Args:
+            - identifier - (string) The identifier to convert to an Easy Auth subject
+
+        Returns:
+            string - The Easy Auth subject identifier
+    """
     return str(uuid.UUID(bytes_le=hashlib.md5(identifier.encode()).digest())).replace("-", "")
 
 def create_signed_easy_auth_token(site_url, signing_key_hex, user_object_id, user_principal_name,
@@ -266,6 +319,16 @@ def create_signed_easy_auth_token(site_url, signing_key_hex, user_object_id, use
     return jwt.decode()
 
 def get_strings_from_bytes(raw_bytes, min_length=3):
+    """
+        Extract ASCII strings from raw bytes
+
+        Args:
+            - raw_bytes - (bytes) Raw byte data to extract strings from
+            - min_length - (int) Minimum length of strings to extract
+
+        Returns:
+            list - A list of extracted ASCII strings
+    """
     ascii_string = ''
     current_string = ''
     for b in raw_bytes:
