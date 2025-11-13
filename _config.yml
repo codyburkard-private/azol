@@ -55,7 +55,3 @@ exclude:
   # theme test code
   - fixtures/
 
-plugins:
-  - jekyll-github-metadata
-  - jekyll-include-cache
-  - jekyll-sitemap
