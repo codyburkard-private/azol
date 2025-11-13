@@ -1,5 +1,6 @@
 ---
 title: Caches
+nav_order: 6
 ---
 
 # Token Caches

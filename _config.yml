@@ -12,6 +12,8 @@ defaults:
     values:
       layout: "default"
 
+heading_anchors: true
+
 # Jekyll settings
 markdown: kramdown
 highlighter: rouge

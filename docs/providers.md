@@ -1,5 +1,6 @@
 ---
 title: Providers
+nav_order: 7
 ---
 
 # Secret Providers

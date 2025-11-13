@@ -1,5 +1,5 @@
 ---
-title: Clients
+title: Arm Client
 nav_order: 2
 ---
 
