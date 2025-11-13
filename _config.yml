@@ -1,6 +1,6 @@
 title: Azol Documentation
 description: A python-based pentesting library for Azure and Entra ID
-baseurl: "/azol"
+baseurl: "azol"
 url: "https://codyburkard-private.github.io/azol"
 theme: just-the-docs
 repository: codyburkard/azol
