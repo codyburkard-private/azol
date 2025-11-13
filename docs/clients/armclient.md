@@ -14,23 +14,13 @@ An HTTP client for interacting with the Azure Resource Manager API.
 ArmClient(tenant, cred, principal_lookup_table=None, ignore_providers=False, **kwargs)
 ```
 
-**Parameters:**
-- `tenant` - Tenant ID or domain name
-- `cred` - Credential object
-- `principal_lookup_table` - Optional lookup table for principals
-- `ignore_providers` - Skip fetching providers on init (default: False)
-
-## Methods
-
-An HTTP client for interacting with the Azure Resource Manager API.
-
 **Constructor Parameters:**
 - `cred`: Credential object
 - `tenant` (str): Tenant ID or domain name
 - `principal_lookup_table` (dict, optional): Mapping of principal IDs to names
 - `ignore_providers` (bool, optional): Skip loading providers on initialization
 
-**Methods:**
+## Methods
 
 ### `get_tenants()`
 Get all tenants the credential has access to.
