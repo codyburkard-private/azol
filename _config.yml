@@ -5,6 +5,13 @@ url: "https://codyburkard-private.github.io/azol"
 theme: just-the-docs
 repository: https://github.com/codyburkard/azol
 
+defaults:
+  - scope:
+      path: "docs" # an empty string here means all files in the project
+      type: "pages"
+    values:
+      layout: "default"
+
 # Jekyll settings
 markdown: kramdown
 highlighter: rouge
