@@ -45,26 +45,23 @@ for sub_id in subscriptions:
 
 ## Getting Started
 
-1. [Install Azol](/azol/installation)
-2. [Read the Quick Start Guide](/azol/quick-start)
-3. [Explore the API Documentation](/azol/clients)
+1. [Install Azol](/installation)
+2. [Read the Quick Start Guide](/quick-start)
+3. [Explore the API Documentation](/clients)
 
 ## Documentation Sections
 
-- **[Installation](/azol/installation)**: How to install Azol
-- **[Quick Start](/azol/quick-start)**: Basic usage examples
-- **[Clients](/azol/clients)**: API client documentation
-- **[Credentials](/azol/credentials)**: Authentication and credential management
-- **[Utilities](/azol/utilities)**: Helper functions and utilities
-- **[Providers](/azol/providers)**: Secret providers
-- **[Caches](/azol/caches)**: Token caching mechanisms
-- **[Models](/azol/models)**: Data models and classes
+- **[Installation](/installation)**: How to install Azol
+- **[Quick Start](/quick-start)**: Basic usage examples
+- **[Clients](/clients)**: API client documentation
+- **[Credentials](/credentials)**: Authentication and credential management
+- **[Utilities](/utilities)**: Helper functions and utilities
+- **[Providers](/providers)**: Secret providers
+- **[Caches](/caches)**: Token caching mechanisms
+- **[Models](/models)**: Data models and classes
 
 ## License
 
-See the [LICENSE](https://github.com/cdburkard/azol/blob/main/LICENSE) file for details.
+See the [LICENSE](/blob/main/LICENSE) file for details.
 
-## Contributing
-
-Contributions are welcome! Please see the [GitHub repository](https://github.com/cdburkard/azol) for more information.
 
