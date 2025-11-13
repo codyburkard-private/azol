@@ -1,6 +1,8 @@
 ---
-title: Azol Documentation
+title: Home
+layout: home
 ---
+
 
 # Azol - Azure Offensive Library
 
