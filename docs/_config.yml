@@ -3,7 +3,6 @@ description: A python-based pentesting library for Azure and Entra ID
 baseurl: ""
 url: "https://codyburkard-private.github.io/azol"
 remote_theme: pages-themes/slate@v0.2.0
-theme: jekyll-theme-slate
 plugins:
 - jekyll-remote-theme 
 
@@ -14,26 +13,6 @@ highlighter: rouge
 # Permalinks
 permalink: pretty
 
-# Navigation for slate theme
-nav:
-  - title: Home
-    url: /
-  - title: Installation
-    url: /installation
-  - title: Quick Start
-    url: /quick-start
-  - title: Clients
-    url: /clients
-  - title: Credentials
-    url: /credentials
-  - title: Utilities
-    url: /utilities
-  - title: Providers
-    url: /providers
-  - title: Caches
-    url: /caches
-  - title: Models
-    url: /models
 
 # Exclude files
 exclude:
