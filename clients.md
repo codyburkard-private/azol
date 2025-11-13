@@ -1,5 +1,6 @@
 ---
 title: Clients
+nav_order: 2
 ---
 
 # API Clients
