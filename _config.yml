@@ -1,10 +1,9 @@
 title: Azol Documentation
 description: A python-based pentesting library for Azure and Entra ID
+baseurl: "/azol"
 url: "https://codyburkard-private.github.io/azol"
 theme: just-the-docs
-
-aux_links: # remove if you don't want this link to appear on your pages
-  Template Repository: https://github.com/
+repository: https://github.com/codyburkard/azol
 
 # Jekyll settings
 markdown: kramdown
@@ -13,14 +12,36 @@ highlighter: rouge
 # Permalinks
 permalink: pretty
 
+kramdown:
+  syntax_highlighter_opts:
+    block:
+      line_numbers: false
 
-# Exclude files
+search_enabled: true
 exclude:
+  # from https://github.com/jekyll/jekyll/blob/master/lib/site_template/_config.yml:
+  - .sass-cache/
+  - .jekyll-cache/
+  - gemfiles/
   - Gemfile
   - Gemfile.lock
-  - node_modules
+  - node_modules/
   - vendor/bundle/
   - vendor/cache/
   - vendor/gems/
   - vendor/ruby/
-
+  # specific to the theme website:
+  - bin/
+  - lib/
+  - "*.gemspec"
+  - "*.gem"
+  - LICENSE.txt
+  - package.json
+  - package-lock.json
+  - Rakefile
+  - README.md
+  - CODE_OF_CONDUCT.md
+  - docker-compose.yml
+  - Dockerfile
+  # theme test code
+  - fixtures/
