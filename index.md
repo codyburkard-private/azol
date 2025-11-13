@@ -60,8 +60,5 @@ for sub_id in subscriptions:
 - **[Caches](/caches)**: Token caching mechanisms
 - **[Models](/models)**: Data models and classes
 
-## License
-
-See the [LICENSE](/blob/main/LICENSE) file for details.
 
 

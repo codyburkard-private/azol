@@ -3,7 +3,7 @@ description: A python-based pentesting library for Azure and Entra ID
 baseurl: "/azol"
 url: "https://codyburkard-private.github.io/azol"
 theme: just-the-docs
-repository: https://github.com/codyburkard/azol
+repository: codyburkard/azol
 
 defaults:
   - scope:
@@ -54,3 +54,9 @@ exclude:
   - Dockerfile
   # theme test code
   - fixtures/
+
+  plugins:
+  - jekyll-seo-tag
+  - jekyll-github-metadata
+  - jekyll-include-cache
+  - jekyll-sitemap
