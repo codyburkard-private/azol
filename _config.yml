@@ -1,6 +1,6 @@
 title: Azol Documentation
 description: A python-based pentesting library for Azure and Entra ID
-baseurl: "/azol"
+baseurl: "azol"
 url: "https://codyburkard-private.github.io/azol"
 theme: just-the-docs
 repository: codyburkard/azol
@@ -56,7 +56,6 @@ exclude:
   - fixtures/
 
 plugins:
-  - jekyll-seo-tag
   - jekyll-github-metadata
   - jekyll-include-cache
   - jekyll-sitemap
