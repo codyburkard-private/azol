@@ -489,9 +489,3 @@ agent_client.disconnect()
 All clients may raise the following exceptions:
 
 - `ArmRequestFailedException` - ARM API request failed
-- `GraphRequestFailedException` - Graph API request failed
-- `ScmRequestFailedException` - Kudu/SCM API request failed
-- `DevOpsAgentAuthenticationException` - DevOps agent authentication failed
-- `DevOpsAgentSessionExistsAzolException` - Agent session already exists
-- `DevOpsAgentSessionCreationException` - Failed to create agent session
-
