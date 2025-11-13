@@ -1,0 +1,30 @@
+title: Azol Documentation
+description: A python-based pentesting library for Azure and Entra ID
+baseurl: ""
+url: "https://codyburkard-private.github.io/azol"
+
+# Jekyll settings
+markdown: kramdown
+highlighter: rouge
+theme: just-the-docs
+
+# Just the Docs theme settings
+search_enabled: true
+heading_anchors: true
+aux_links:
+  "Azol on GitHub":
+    - "https://github.com/cdburkard/azol"
+
+# Permalinks
+permalink: pretty
+
+# Exclude files
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - node_modules
+  - vendor/bundle/
+  - vendor/cache/
+  - vendor/gems/
+  - vendor/ruby/
+
