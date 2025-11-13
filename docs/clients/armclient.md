@@ -1,151 +1,16 @@
 ---
-title: other Client
+title: Arm Client
 nav_order: 2
 parent: Clients
 ---
 
-# API Clients
 
-Azol provides several HTTP clients for interacting with Azure services. All clients inherit from `OAuthHTTPClient` and handle authentication automatically.
 
-## OAuthHTTPClient
-
-Base class for all OAuth HTTP clients. Provides token management and OAuth flow handling.
-
-### Constructor Parameters
-
-- `cred` - Credential object (User, ServicePrincipal, etc.)
-- `oauth_resource` - OAuth resource identifier (e.g., `OAuthResourceIDs.Arm`)
-- `base_url` - Base URL for API requests
-- `tenant` - Tenant ID or domain name
-- `oauth_flow` - OAuth flow to use (defaults to credential's default flow)
-- `scopes` - List of OAuth scopes to request
-- `use_persistent_cache` - Whether to use persistent token cache (default: True)
-- `auto_refresh` - Automatically refresh expired tokens (default: True)
-
-### Methods
-
-#### `fetch_token()`
-Fetch a new access token and cache it.
-
-**Example:**
-```python
-client.fetch_token()
-```
-
-#### `get_current_token()`
-Get the currently cached access token.
-
-**Returns:** Raw JWT token string or None
-
-**Example:**
-```python
-token = client.get_current_token()
-```
-
-#### `get_current_refresh_token()`
-Get the current refresh token.
-
-**Returns:** Refresh token string or None
-
-**Example:**
-```python
-refresh = client.get_current_refresh_token()
-```
-
-#### `refresh_token()`
-Force refresh using the refresh token.
-
-**Example:**
-```python
-client.refresh_token()
-```
-
-#### `get_token_claims()`
-Get claims from the current token.
-
-**Returns:** Dictionary containing token claims
-
-**Example:**
-```python
-claims = client.get_token_claims()
-print(claims['upn'])
-print(claims['tid'])
-```
-
-#### `switch_tenant(tenant)`
-Switch to a different tenant.
-
-**Parameters:**
-- `tenant` - Tenant ID or domain name
-
-**Example:**
-```python
-client.switch_tenant("another-tenant.com")
-```
-
-#### `switch_scope(scopes, default, profile, offline_access, openid)`
-Change the OAuth scope.
-
-**Parameters:**
-- `scopes` - List of scope strings
-- `default` - Use default scope for resource
-- `profile` - Include profile scope
-- `offline_access` - Include offline_access scope
-- `openid` - Include openid scope
-
-**Example:**
-```python
-client.switch_scope(
-    scopes=["User.Read", "Mail.Read"],
-    default=False,
-    profile=True,
-    offline_access=True,
-    openid=True
-)
-```
-
-#### `switch_client(client_id)`
-Switch to a different OAuth client (FOCI abuse).
-
-**Parameters:**
-- `client_id` - Client ID to switch to
-
-**Example:**
-```python
-client.switch_client("00000000-0000-0000-0000-000000000000")
-```
-
-#### `refresh_to_new_resource(oauth_http_client_class)`
-Create a new client for a different resource using the same refresh token.
-
-**Parameters:**
-- `oauth_http_client_class` - Client class to create (e.g., `ArmClient`, `GraphClient`)
-
-**Returns:** New client instance
-
-**Example:**
-```python
-# Switch from Graph to ARM
-arm_client = graph_client.refresh_to_new_resource(ArmClient)
-```
-
-#### `from_client(client, *args, **kwargs)` (Class Method)
-Create a new client from an existing client.
-
-**Example:**
-```python
-# Create ARM client from Graph client
-arm_client = ArmClient.from_client(graph_client)
-```
-
----
-
-## ArmClient
+# ArmClient
 
 An HTTP client for interacting with the Azure Resource Manager API.
 
-### Constructor
+## Constructor
 
 ```python
 ArmClient(tenant, cred, principal_lookup_table=None, ignore_providers=False, **kwargs)
@@ -157,9 +22,9 @@ ArmClient(tenant, cred, principal_lookup_table=None, ignore_providers=False, **k
 - `principal_lookup_table` - Optional lookup table for principals
 - `ignore_providers` - Skip fetching providers on init (default: False)
 
-### Methods
+## Methods
 
-#### `get_tenants()`
+### `get_tenants()`
 Get user's tenants.
 
 **Returns:** List of dictionaries containing tenant information
@@ -173,7 +38,7 @@ for tenant in tenants:
     print(tenant["defaultDomain"])
 ```
 
-#### `get_management_groups(expand=False)`
+### `get_management_groups(expand=False)`
 Get all management groups.
 
 **Parameters:**
@@ -186,7 +51,7 @@ Get all management groups.
 mgroups = arm_client.get_management_groups()
 ```
 
-#### `get_subscriptions(expand=False)`
+### `get_subscriptions(expand=False)`
 Get all subscriptions.
 
 **Parameters:**
@@ -201,7 +66,7 @@ for sub_id in subscriptions:
     print(sub_id)
 ```
 
-#### `get_resource_groups(subscriptions=None)`
+### `get_resource_groups(subscriptions=None)`
 Get all resource groups.
 
 **Parameters:**
@@ -214,7 +79,7 @@ Get all resource groups.
 rgs = arm_client.get_resource_groups()
 ```
 
-#### `get_providers()`
+### `get_providers()`
 Get ARM providers and API versions.
 
 **Returns:** Dictionary mapping provider namespaces to API versions
@@ -224,7 +89,7 @@ Get ARM providers and API versions.
 providers = arm_client.get_providers()
 ```
 
-#### `get_resource(resource_id, api_version=None)`
+### `get_resource(resource_id, api_version=None)`
 Get an individual resource.
 
 **Parameters:**
@@ -239,7 +104,7 @@ resource = arm_client.get_resource("/subscriptions/.../resourceGroups/.../provid
 print(resource.name)
 ```
 
-#### `get_resources(resource_type=None, subscriptions=None, ignore_subscriptions=None)`
+### `get_resources(resource_type=None, subscriptions=None, ignore_subscriptions=None)`
 Get all resources.
 
 **Parameters:**
@@ -272,7 +137,7 @@ GraphClient(tenant, cred, base_url=GRAPHBETAURL, **kwargs)
 
 ### Methods
 
-#### `get_all_users(select=None)`
+### `get_all_users(select=None)`
 Get all users in the directory.
 
 **Parameters:**
@@ -285,7 +150,7 @@ Get all users in the directory.
 users = graph_client.get_all_users(select=['userPrincipalName', 'mail', 'displayName'])
 ```
 
-#### `get_all_groups(owners=False)`
+### `get_all_groups(owners=False)`
 Get all groups.
 
 **Parameters:**
@@ -298,7 +163,7 @@ Get all groups.
 groups = graph_client.get_all_groups(owners=True)
 ```
 
-#### `get_all_groups_and_owners()`
+### `get_all_groups_and_owners()`
 Get all groups with their owners.
 
 **Returns:** List of group dictionaries with owner information
@@ -308,7 +173,7 @@ Get all groups with their owners.
 groups = graph_client.get_all_groups_and_owners()
 ```
 
-#### `get_directory_role_definitions()`
+### `get_directory_role_definitions()`
 Get all directory role definitions.
 
 **Returns:** List of role definition dictionaries
@@ -318,7 +183,7 @@ Get all directory role definitions.
 roles = graph_client.get_directory_role_definitions()
 ```
 
-#### `get_directory_role_assignments()`
+### `get_directory_role_assignments()`
 Get all directory role assignments.
 
 **Returns:** List of role assignment dictionaries
@@ -328,7 +193,7 @@ Get all directory role assignments.
 assignments = graph_client.get_directory_role_assignments()
 ```
 
-#### `add_directory_role_assignment(role_definition_id, principal_id)`
+### `add_directory_role_assignment(role_definition_id, principal_id)`
 Assign a directory role to a principal.
 
 **Parameters:**
@@ -345,7 +210,7 @@ assignment = graph_client.add_directory_role_assignment(
 )
 ```
 
-#### `create_new_local_service_principal(name)`
+### `create_new_local_service_principal(name)`
 Create a new service principal.
 
 **Parameters:**
@@ -379,7 +244,7 @@ KeyVaultClient(key_vault_name, cred, tenant, **kwargs)
 
 ### Methods
 
-#### `get_secrets()`
+### `get_secrets()`
 Get all secrets in the key vault.
 
 **Returns:** List of secret metadata dictionaries
@@ -391,7 +256,7 @@ for secret in secrets:
     print(secret['name'])
 ```
 
-#### `get_secret(secret_name, secret_version=None)`
+### `get_secret(secret_name, secret_version=None)`
 Get a secret value.
 
 **Parameters:**
@@ -405,7 +270,7 @@ Get a secret value.
 secret_value = kv_client.get_secret("my-secret")
 ```
 
-#### `get_keys()`
+### `get_keys()`
 Get all keys in the key vault.
 
 **Returns:** List of key metadata dictionaries
@@ -415,7 +280,7 @@ Get all keys in the key vault.
 keys = kv_client.get_keys()
 ```
 
-#### `get_certificates()`
+### `get_certificates()`
 Get all certificates in the key vault.
 
 **Returns:** List of certificate metadata dictionaries
@@ -439,7 +304,7 @@ AzureDevOpsClient(cred, tenant, **kwargs)
 
 ### Methods
 
-#### `get_organizations()`
+### `get_organizations()`
 Get all organizations accessible to the credential.
 
 **Returns:** List of organization dictionaries
@@ -449,7 +314,7 @@ Get all organizations accessible to the credential.
 orgs = devops_client.get_organizations()
 ```
 
-#### `get_projects(org_name)`
+### `get_projects(org_name)`
 Get all projects in an organization.
 
 **Parameters:**
@@ -462,7 +327,7 @@ Get all projects in an organization.
 projects = devops_client.get_projects("myorg")
 ```
 
-#### `get_service_connections(org_name, project_name)`
+### `get_service_connections(org_name, project_name)`
 Get all service connections in a project.
 
 **Parameters:**
@@ -476,7 +341,7 @@ Get all service connections in a project.
 connections = devops_client.get_service_connections("myorg", "myproject")
 ```
 
-#### `get_agent_pools(org_name)`
+### `get_agent_pools(org_name)`
 Get all agent pools in an organization.
 
 **Parameters:**
@@ -489,7 +354,7 @@ Get all agent pools in an organization.
 pools = devops_client.get_agent_pools("myorg")
 ```
 
-#### `create_agent(org_name, pool_id, name)`
+### `create_agent(org_name, pool_id, name)`
 Create a new DevOps agent.
 
 **Parameters:**
@@ -523,7 +388,7 @@ DataFactoryClient(authentication_key, ir_node_id=None, spoofed_ir_name="Default"
 
 ### Methods
 
-#### `get_managed_identity_token(oauth_resource)`
+### `get_managed_identity_token(oauth_resource)`
 Get a managed identity token.
 
 **Parameters:**
@@ -536,7 +401,7 @@ Get a managed identity token.
 token = df_client.get_managed_identity_token("https://management.azure.com/")
 ```
 
-#### `spoof_shir(poll_interval=3, job_callback=None)`
+### `spoof_shir(poll_interval=3, job_callback=None)`
 Register a spoofed self-hosted integration runtime and poll for jobs.
 
 **Parameters:**
@@ -570,7 +435,7 @@ KuduClient(site_name, cred, tenant, **kwargs)
 
 ### Methods
 
-#### `get_scm_env_vars()`
+### `get_scm_env_vars()`
 Get SCM environment variables.
 
 **Returns:** Dictionary of environment variables
@@ -601,7 +466,7 @@ AzureDevOpsAgentClient(org_name, pool_id, agent_id, rsa_parameters, message_call
 
 ### Methods
 
-#### `connect()`
+### `connect()`
 Connect to the agent service.
 
 **Example:**
@@ -609,7 +474,7 @@ Connect to the agent service.
 agent_client.connect()
 ```
 
-#### `disconnect()`
+### `disconnect()`
 Disconnect from the agent service.
 
 **Example:**
