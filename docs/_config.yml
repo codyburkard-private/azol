@@ -6,17 +6,31 @@ url: "https://codyburkard-private.github.io/azol"
 # Jekyll settings
 markdown: kramdown
 highlighter: rouge
-theme: just-the-docs
-
-# Just the Docs theme settings
-search_enabled: true
-heading_anchors: true
-aux_links:
-  "Azol on GitHub":
-    - "https://github.com/cdburkard/azol"
+theme: jekyll-theme-slate
 
 # Permalinks
 permalink: pretty
+
+# Navigation for slate theme
+nav:
+  - title: Home
+    url: /
+  - title: Installation
+    url: /installation
+  - title: Quick Start
+    url: /quick-start
+  - title: Clients
+    url: /clients
+  - title: Credentials
+    url: /credentials
+  - title: Utilities
+    url: /utilities
+  - title: Providers
+    url: /providers
+  - title: Caches
+    url: /caches
+  - title: Models
+    url: /models
 
 # Exclude files
 exclude:
