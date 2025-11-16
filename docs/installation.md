@@ -14,20 +14,6 @@ nav_order: 0
 
 The easiest way to install Azol is using pip:
 
-```bash
-pip install azol
-```
-
-## Install from Source
-
-If you want to install from the source code:
-
-```bash
-git clone https://github.com/cdburkard/azol.git
-cd azol
-pip install .
-```
-
 ## Dependencies
 
 Azol has the following dependencies (installed automatically):

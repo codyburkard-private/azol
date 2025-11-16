@@ -5,38 +5,10 @@ nav_order: 3
 
 # Credentials
 
-Azol provides several credential types for authentication. All credentials inherit from the base `Credential` class.
+Azol provides several credential types for authentication. 
 
-## Credential
+Credentials are read-only objects in azol. They are meant for tracking and managing service principals, secrets and users that are accumulated over time during a test. If you are just using azol for auditing, you probably just want to use the ServicePrincipal or User credential type.
 
-Base class for all credential types.
-
-### Methods
-
-#### `get_id()`
-Get the azol ID of the credential object.
-
-**Returns:** String containing the azol ID
-
-**Example:**
-```python
-cred_id = cred.get_id()
-```
-
----
-
-## EntraIdCredential
-
-Base class for Entra ID credentials (inherits from `Credential`).
-
-### Methods
-
-#### `get_default_oauth_flow()`
-Get the default OAuth flow for this credential type.
-
-**Returns:** OAuth flow string
-
----
 
 ## User
 
@@ -344,15 +316,3 @@ from azol.clients import GraphClient
 cred = ADOWorkloadFederationCredential()
 graph_client = GraphClient(tenant="tenant.com", cred=cred)
 ```
-
----
-
-## Choosing a Credential Type
-
-- **User**: Use when you have user credentials (username/password, refresh token, or ESTS cookies)
-- **ServicePrincipal**: Use when you have a service principal with client secret or certificate
-- **AccessToken**: Use when you already have a valid access token
-- **ApplicationObject**: Use for application-only authentication
-- **DevOpsAgentCredential**: Use for Azure DevOps agent authentication
-- **ADOWorkloadFederationCredential**: Use for Azure DevOps pipeline workload federation
-

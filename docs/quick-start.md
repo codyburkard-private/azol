@@ -5,7 +5,7 @@ nav_order: 2
 
 # Quick Start Guide
 
-This guide will help you get started with Azol quickly. We'll cover the most common use cases and patterns.
+This guide will help you get started with Azol. We'll cover the most common use cases and patterns.
 
 ## Basic Authentication
 
@@ -19,11 +19,8 @@ from azol.clients import ArmClient
 
 cred = User(username="user@domain.com")
 arm_client = ArmClient(tenant="tenant.com", cred=cred)
+arm_client.fetch_token()
 
-# Get all subscriptions
-subscriptions = arm_client.get_subscriptions()
-for sub_id in subscriptions:
-    print(sub_id)
 ```
 
 ### Service Principal Authentication
@@ -33,6 +30,7 @@ Authenticate using a service principal:
 ```python
 from azol.credentials import ServicePrincipal
 from azol.clients import GraphClient
+from pprint import pprint
 
 cred = ServicePrincipal(
     client_id="00000000-0000-0000-0000-000000000000",
@@ -42,14 +40,16 @@ cred = ServicePrincipal(
 graph_client = GraphClient(tenant="tenant.com", cred=cred)
 
 # Get all groups with owners
-groups = graph_client.get_all_groups_and_owners()
-for group in groups:
-    print(group)
+groups = graph_client.get_all_users()
+for user in users:
+    pprint(user)
 ```
 
-### Interactive Authentication
+### Logging in via the local device
 
-Use authorization code flow for interactive browser login:
+Some organizations use conditional access policies that require logins via specific devices. This requires use of a local PRT on the device to get an access token.
+
+azol supports this via use of a token broker when using a user credential. 
 
 ```python
 from azol import User, ArmClient
@@ -57,7 +57,7 @@ from azol import User, ArmClient
 cred = User("user@domain.com")
 arm_client = ArmClient(
     cred=cred,
-    oauth_flow="authorization_code"
+    use_token_broker=True
 )
 
 # Get all tenants the user belongs to
