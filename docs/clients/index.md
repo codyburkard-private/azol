@@ -5,14 +5,14 @@ nav_order: 1
 
 ## Available Clients
 
-- [OAuthHTTPClient](oauthhttpclient.html) - Base class for all OAuth HTTP clients
-- [ArmClient](armclient.html) - Azure Resource Manager API client
-- [GraphClient](graphclient.html) - Microsoft Graph API client
-- [KeyVaultClient](keyvaultclient.html) - Azure Key Vault client
-- [AzureDevOpsClient](azuredevopsclient.html) - Azure DevOps API client
-- [DataFactoryClient](datafactoryclient.html) - Azure Data Factory API client
-- [KuduClient](kuduclient.html) - Kudu/SCM API client
-- [AzureDevOpsAgentClient](azuredevopsagentclient.html) - Azure DevOps Agent client
+- [OAuthHTTPClient](oauthhttpclient) - Base class for all OAuth HTTP clients
+- [ArmClient](armclient) - Azure Resource Manager API client
+- [GraphClient](graphclient) - Microsoft Graph API client
+- [KeyVaultClient](keyvaultclient) - Azure Key Vault client
+- [AzureDevOpsClient](azuredevopsclient) - Azure DevOps API client
+- [DataFactoryClient](datafactoryclient) - Azure Data Factory API client
+- [KuduClient](kuduclient) - Kudu/SCM API client
+- [AzureDevOpsAgentClient](azuredevopsagentclient) - Azure DevOps Agent client
 
 # Azol Clients
 
@@ -75,10 +75,14 @@ user=User(username="user@domain.com", client_id="00000000-1111-2222-3333-4444444
 # Here, the GraphClient is the azol HTTP Client, which inherits from OAuthHTTPClient.
 client=GraphClient(cred=user)
 
-# Here, the azol client will execute an OAuth flow to get a new access token for the OAuth client_id in *user*, against the Microsft Graph OAuth Resource (https://graph.microsoft.com). 
+# Here, the azol client will execute an OAuth flow to get a new access token for the OAuth client_id in *user*
+# against the Microsft Graph OAuth Resource (https://graph.microsoft.com). 
 client.fetch_token()
 
-# Note that the request will fail unless the client_id exists in the tenant and has been consented to Microsoft Graph. By default, azol uses a first-party Azure Powershell client_id for users, which causes the library to spoof logins and session for the Azure Powershell CLI.
+# Note that the request will fail unless the client_id exists in the tenant and has
+# been consented to Microsoft Graph. By default, azol uses a first-party Azure Powershell 
+# client_id for users, which causes the library to spoof logins and session for the 
+# Azure Powershell CLI.
 
 ```
 
