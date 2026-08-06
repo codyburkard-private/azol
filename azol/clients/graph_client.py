@@ -1,15 +1,9 @@
 """A module containing a client for interacting with the Graph API"""
-import logging
 from azol.clients.oauth_http_client import OAuthHTTPClient
+from azol.clients.odata import GraphCall
 from azol.constants import GRAPHBETAURL, OAuthResourceIDs, roleNameMap, appPermissionNameMap
 import asyncio
 import string
-
-class GraphRequestFailedException(Exception):
-    """
-        Exception that is raised when requests to MS Graph
-        unexpectedly fail
-    """
 
 class GraphClient( OAuthHTTPClient ):
     """
@@ -19,34 +13,17 @@ class GraphClient( OAuthHTTPClient ):
     def __init__( self, *args, base_url=GRAPHBETAURL, **kwargs ):
         super().__init__(  oauth_resource=OAuthResourceIDs.Graph, base_url=base_url, *args, **kwargs )
 
-    def _send_request( self, *args, success_code=200, **kwargs ):
-        response = super()._send_request(*args, **kwargs)
-        if response.status_code != success_code:
-            logging.error( "Error on GRAPH API request. Raw error: %s ", str(response.content))
-            raise GraphRequestFailedException()
-        return response
+    def call(self, path: str) -> GraphCall:
+        """Return a fluent Graph call bound to this client.
 
-    def _get_all_graph_objects(self, response):
-        """Get all objects from graph api request
-
-        read all pages from a graph api request
-        
-        Args:
-            response - (requests.Response) TThe requests response object for a graph request
-
-        Returns:
-            A list of dictionaries containing the entire Graph response
-
+        Failures raise ``AzolHTTPError`` (or a status-specific subclass such as
+        ``AzolClientError`` / ``AzolServerError``).
         """
+        return GraphCall(self, path)
 
-        all_objects=[]
-        objects=response.json()["value"]
-        all_objects += objects
-        while "@odata.nextLink" in response.json().keys():
-            response = self._send_request( url=response.json()["@odata.nextLink"] )
-            objects = response.json()[ "value" ]
-            all_objects += objects
-        return all_objects
+    def odata(self, path: str) -> GraphCall:
+        """Alias of ``call`` for OData-style GETs."""
+        return self.call(path)
 
     def get_directory_role_definitions( self ):
         """Get all directory role definitions.
@@ -55,14 +32,14 @@ class GraphClient( OAuthHTTPClient ):
             A list of dictionaries containing the role definitions in the directory.
 
         Raises:
-            GraphRequestFailedException: An error occurred accessing the Graph API
+            AzolHTTPError: An error occurred accessing the Graph API
 
         """
-        response = self._send_request( "/roleManagement/directory/roleDefinitions?"
-                                       "$select=displayName,id,isBuiltIn" )
-        if response:
-            return self._get_all_graph_objects(response)
-        raise GraphRequestFailedException()
+        return (
+            self.call("/roleManagement/directory/roleDefinitions")
+            .select("displayName", "id", "isBuiltIn")
+            .get().values()
+        )
 
     def get_access_catalogs_roles( self, catalogId ):
         """
@@ -75,19 +52,19 @@ class GraphClient( OAuthHTTPClient ):
                 A list of dictionaries containing role assignments for the catalog
 
             Raises:
-                GraphRequestFailedException: An error occurred accessing the Graph API
+                AzolHTTPError: An error occurred accessing the Graph API
 
         """
-        response=self._send_request( f"/roleManagement/entitlementManagement/roleAssignments?$filter=appScopeId eq '/AccessPackageCatalog/{catalogId}'" )
-
-        if response:
-            roles=response.json()["value"]
-            for role in roles:
-                role["azolAnnotations"] = {
-                    "roleName" : roleNameMap[role["roleDefinitionId"]]
-                }
-            return roles
-        raise GraphRequestFailedException()
+        roles = (
+            self.call("/roleManagement/entitlementManagement/roleAssignments")
+            .filter(f"appScopeId eq '/AccessPackageCatalog/{catalogId}'")
+            .get().values()
+        )
+        for role in roles:
+            role["azolAnnotations"] = {
+                "roleName" : roleNameMap[role["roleDefinitionId"]]
+            }
+        return roles
 
 
     def create_package_policy( self, policy ):
@@ -100,15 +77,16 @@ class GraphClient( OAuthHTTPClient ):
             policy - dictionary containing entitlement management package policy
 
         Raises:
-            GraphRequestFailedException: An error occurred accessing the Graph API
+            AzolHTTPError: An error occurred accessing the Graph API
 
         """
-        response=self._send_request( "/identityGovernance/entitlementManagement/accessPackageAssignmentPolicies",
-                                     method="POST", json=policy, success_code=201 )
-
-        if response:
-            return response.json()
-        raise GraphRequestFailedException()
+        return (
+            self.call("/identityGovernance/entitlementManagement/accessPackageAssignmentPolicies")
+            .body(policy)
+            .expect(201)
+            .post()
+            .json()
+        )
 
     def create_entitlement_management_package( self, package ):
         """Create Entitlement Management Pacakge
@@ -120,15 +98,16 @@ class GraphClient( OAuthHTTPClient ):
             package - dictionary containing entitlement management package metadata
 
         Raises:
-            GraphRequestFailedException: An error occurred accessing the Graph API
+            AzolHTTPError: An error occurred accessing the Graph API
 
         """
-        response=self._send_request( "/identityGovernance/entitlementManagement/accessPackages",
-                                     method="POST", json=package, success_code=201 )
-
-        if response:
-            return response.json()
-        raise GraphRequestFailedException()
+        return (
+            self.call("/identityGovernance/entitlementManagement/accessPackages")
+            .body(package)
+            .expect(201)
+            .post()
+            .json()
+        )
 
     def create_entitlement_management_catalog( self, catalog ):
         """Create Entitlement Management Catalog
@@ -140,15 +119,16 @@ class GraphClient( OAuthHTTPClient ):
             catalog - dictionary containing entitlement management catalog metadata
 
         Raises:
-            GraphRequestFailedException: An error occurred accessing the Graph API
+            AzolHTTPError: An error occurred accessing the Graph API
 
         """
-        response=self._send_request( "/identityGovernance/entitlementManagement/accessPackageCatalogs",
-                                     method="POST", json=catalog, success_code=201 )
-
-        if response:
-            return self._get_all_graph_objects(response)
-        raise GraphRequestFailedException()
+        return (
+            self.call("/identityGovernance/entitlementManagement/accessPackageCatalogs")
+            .body(catalog)
+            .expect(201)
+            .post()
+            .json()
+        )
 
     def get_access_packages( self ):
         """Get Entitlement Management Access Packages.
@@ -157,15 +137,15 @@ class GraphClient( OAuthHTTPClient ):
             A list of dictionaries containing all entitlement management access packages metadata.
 
         Raises:
-            GraphRequestFailedException: An error occurred accessing the Graph API
+            AzolHTTPError: An error occurred accessing the Graph API
 
         """
 
-        response=self._send_request( "/identityGovernance/entitlementManagement/accessPackages?$expand=accessPackageCatalog($select=displayName,id,description)" )
-
-        if response:
-            return self._get_all_graph_objects(response)
-        raise GraphRequestFailedException()
+        return (
+            self.call("/identityGovernance/entitlementManagement/accessPackages")
+            .expand("accessPackageCatalog", select=("displayName", "id", "description"))
+            .get().values()
+        )
 
     def get_entitlement_management_catalogs( self ):
         """Get Entitlement Management Catalogs.
@@ -174,15 +154,11 @@ class GraphClient( OAuthHTTPClient ):
             A list of dictionaries containing entitlement management catalog metadata.
 
         Raises:
-            GraphRequestFailedException: An error occurred accessing the Graph API
+            AzolHTTPError: An error occurred accessing the Graph API
 
         """
 
-        response=self._send_request( "/identityGovernance/entitlementManagement/accessPackageCatalogs" )
-
-        if response:
-            return self._get_all_graph_objects(response)
-        raise GraphRequestFailedException()
+        return self.call("/identityGovernance/entitlementManagement/accessPackageCatalogs").get().values()
 
     def create_package_policy( self, policy ):
         """Create policy for Entitlement Management Pacakge
@@ -194,15 +170,16 @@ class GraphClient( OAuthHTTPClient ):
             catalog - dictionary containing entitlement management package policy
 
         Raises:
-            GraphRequestFailedException: An error occurred accessing the Graph API
+            AzolHTTPError: An error occurred accessing the Graph API
 
         """
-        response=self._send_request( "/identityGovernance/entitlementManagement/accessPackageAssignmentPolicies",
-                                     method="POST", json=policy, success_code=201 )
-
-        if response:
-            return response.json()
-        raise GraphRequestFailedException()
+        return (
+            self.call("/identityGovernance/entitlementManagement/accessPackageAssignmentPolicies")
+            .body(policy)
+            .expect(201)
+            .post()
+            .json()
+        )
 
     def create_entitlement_management_package( self, package ):
         """Create Entitlement Management Pacakge
@@ -214,15 +191,16 @@ class GraphClient( OAuthHTTPClient ):
             package - dictionary containing entitlement management package metadata
 
         Raises:
-            GraphRequestFailedException: An error occurred accessing the Graph API
+            AzolHTTPError: An error occurred accessing the Graph API
 
         """
-        response=self._send_request( "/identityGovernance/entitlementManagement/accessPackages",
-                                     method="POST", json=package, success_code=201 )
-
-        if response:
-            return response.json()
-        raise GraphRequestFailedException()
+        return (
+            self.call("/identityGovernance/entitlementManagement/accessPackages")
+            .body(package)
+            .expect(201)
+            .post()
+            .json()
+        )
 
     def create_entitlement_management_catalog( self, catalog ):
         """Create Entitlement Management Catalog
@@ -234,15 +212,16 @@ class GraphClient( OAuthHTTPClient ):
             catalog - dictionary containing entitlement management catalog metadata
 
         Raises:
-            GraphRequestFailedException: An error occurred accessing the Graph API
+            AzolHTTPError: An error occurred accessing the Graph API
 
         """
-        response=self._send_request( "/identityGovernance/entitlementManagement/accessPackageCatalogs",
-                                     method="POST", json=catalog, success_code=201 )
-
-        if response:
-            return self._get_all_graph_objects(response)
-        raise GraphRequestFailedException()
+        return (
+            self.call("/identityGovernance/entitlementManagement/accessPackageCatalogs")
+            .body(catalog)
+            .expect(201)
+            .post()
+            .json()
+        )
 
     def get_access_packages( self ):
         """Get Entitlement Management Access Packages.
@@ -251,15 +230,15 @@ class GraphClient( OAuthHTTPClient ):
             A list of dictionaries containing all entitlement management access packages metadata.
 
         Raises:
-            GraphRequestFailedException: An error occurred accessing the Graph API
+            AzolHTTPError: An error occurred accessing the Graph API
 
         """
 
-        response=self._send_request( "/identityGovernance/entitlementManagement/accessPackages?$expand=accessPackageCatalog($select=displayName,id,description)" )
-
-        if response:
-            return self._get_all_graph_objects(response)
-        raise GraphRequestFailedException()
+        return (
+            self.call("/identityGovernance/entitlementManagement/accessPackages")
+            .expand("accessPackageCatalog", select=("displayName", "id", "description"))
+            .get().values()
+        )
 
     def get_entitlement_management_catalogs( self ):
         """Get Entitlement Management Catalogs.
@@ -268,15 +247,11 @@ class GraphClient( OAuthHTTPClient ):
             A list of dictionaries containing entitlement management catalog metadata.
 
         Raises:
-            GraphRequestFailedException: An error occurred accessing the Graph API
+            AzolHTTPError: An error occurred accessing the Graph API
 
         """
 
-        response=self._send_request( "/identityGovernance/entitlementManagement/accessPackageCatalogs" )
-
-        if response:
-            return self._get_all_graph_objects(response)
-        raise GraphRequestFailedException()
+        return self.call("/identityGovernance/entitlementManagement/accessPackageCatalogs").get().values()
 
     def get_current_pim_eligibility( self ):
         """Get pim eligibility of the current principal.
@@ -285,17 +260,17 @@ class GraphClient( OAuthHTTPClient ):
             A list of dictionaries containing the pim eligibility of the current principal.
 
         Raises:
-            GraphRequestFailedException: An error occurred accessing the Graph API
+            AzolHTTPError: An error occurred accessing the Graph API
 
         """
-        response = self._send_request( "/roleManagement/directory/roleEligibilitySchedules/"
-                                       "filterByCurrentUser(on='principal')?"
-                                       "$expand=principal,roleDefinition($select=displayName,id,templateId)"
-                                       "&$select=principal,roleDefinition,scheduleInfo,memberType,appScopeId,"
-                                       "directoryScopeId,createdDateTime" )
-        if response:
-            return self._get_all_graph_objects(response)
-        raise GraphRequestFailedException()
+        return (
+            self.call("/roleManagement/directory/roleEligibilitySchedules/filterByCurrentUser(on='principal')")
+            .expand("principal")
+            .expand("roleDefinition", select=("displayName", "id", "templateId"))
+            .select("principal", "roleDefinition", "scheduleInfo", "memberType", "appScopeId",
+                    "directoryScopeId", "createdDateTime")
+            .get().values()
+        )
 
     def get_current_pim_activations( self ):
         """Get pim activations of the current principal.
@@ -304,17 +279,17 @@ class GraphClient( OAuthHTTPClient ):
             A list of dictionaries containing the pim activations of the current principal.
 
         Raises:
-            GraphRequestFailedException: An error occurred accessing the Graph API
+            AzolHTTPError: An error occurred accessing the Graph API
 
         """
-        response = self._send_request( "/roleManagement/directory/roleAssignmentSchedules/"
-                                       "filterByCurrentUser(on='principal')?"
-                                       "$expand=principal,roleDefinition($select=displayName,id,templateId)"
-                                       "&$select=principal,roleDefinition,scheduleInfo,memberType,appScopeId,"
-                                       "directoryScopeId,createdDateTime" )
-        if response:
-            return self._get_all_graph_objects(response)
-        raise GraphRequestFailedException()
+        return (
+            self.call("/roleManagement/directory/roleAssignmentSchedules/filterByCurrentUser(on='principal')")
+            .expand("principal")
+            .expand("roleDefinition", select=("displayName", "id", "templateId"))
+            .select("principal", "roleDefinition", "scheduleInfo", "memberType", "appScopeId",
+                    "directoryScopeId", "createdDateTime")
+            .get().values()
+        )
 
     def get_active_pim_assignments( self ):
         """Get all active PIM sessions.
@@ -323,16 +298,17 @@ class GraphClient( OAuthHTTPClient ):
             A list of dictionaries containing the active PIM sessions in the directory.
 
         Raises:
-            GraphRequestFailedException: An error occurred accessing the Graph API
+            AzolHTTPError: An error occurred accessing the Graph API
 
         """
-        response = self._send_request( "/roleManagement/directory/roleAssignmentSchedules?"
-                                       "$expand=principal,roleDefinition($select=displayName,id,templateId)"
-                                       "&$select=principal,roleDefinition,scheduleInfo,memberType,appScopeId,"
-                                       "directoryScopeId,createdDateTime" )
-        if response:
-            return self._get_all_graph_objects(response)
-        raise GraphRequestFailedException()
+        return (
+            self.call("/roleManagement/directory/roleAssignmentSchedules")
+            .expand("principal")
+            .expand("roleDefinition", select=("displayName", "id", "templateId"))
+            .select("principal", "roleDefinition", "scheduleInfo", "memberType", "appScopeId",
+                    "directoryScopeId", "createdDateTime")
+            .get().values()
+        )
 
     def get_eligible_pim_assignments( self ):
         """Get all eligible PIM assignments.
@@ -341,16 +317,17 @@ class GraphClient( OAuthHTTPClient ):
             A list of dictionaries containing the eligible PIM assignments in the directory.
 
         Raises:
-            GraphRequestFailedException: An error occurred accessing the Graph API
+            AzolHTTPError: An error occurred accessing the Graph API
 
         """
-        response = self._send_request( "/roleManagement/directory/roleEligibilitySchedules?"
-                                       "$expand=principal,roleDefinition($select=displayName,id,templateId)"
-                                       "&$select=principal,roleDefinition,scheduleInfo,memberType,appScopeId,"
-                                       "directoryScopeId,createdDateTime" )
-        if response:
-            return self._get_all_graph_objects(response)
-        raise GraphRequestFailedException()
+        return (
+            self.call("/roleManagement/directory/roleEligibilitySchedules")
+            .expand("principal")
+            .expand("roleDefinition", select=("displayName", "id", "templateId"))
+            .select("principal", "roleDefinition", "scheduleInfo", "memberType", "appScopeId",
+                    "directoryScopeId", "createdDateTime")
+            .get().values()
+        )
 
     def get_transitive_group_memberships( self, group_id ):
         """Get transitive group memberships of a specific group.
@@ -362,13 +339,10 @@ class GraphClient( OAuthHTTPClient ):
             A list of objects containing members of the group.
 
         Raises:
-            GraphRequestFailedException: An error occurred accessing the Graph API
+            AzolHTTPError: An error occurred accessing the Graph API
 
         """
-        response = self._send_request( f"/groups/{group_id}/transitiveMembers" )
-        if response:
-            return self._get_all_graph_objects(response)
-        raise GraphRequestFailedException()
+        return self.call(f"/groups/{group_id}/transitiveMembers").get().values()
 
     def _get_all_users( self, select=[], filter=None ):
         """Get all users in the directory.
@@ -383,37 +357,22 @@ class GraphClient( OAuthHTTPClient ):
             A list of objects containing object id and displayName of all users
 
         Raises:
-            GraphRequestFailedException: An error occurred accessing the Graph API
+            AzolHTTPError: An error occurred accessing the Graph API
         """
-        if filter is None:
-            filter_param_string=""
-        else:
-            filter_param_string=filter
+        builder = self.call("/users")
         if select == []:
-            if filter is not None:
-                path_and_params="/users?$select=id,displayName,appId" + f"&$count=true&$filter={filter_param_string}"
-            else:
-                path_and_params="/users?$select=id,displayName,appId"
-        elif select == None:
-            if filter is not None:
-                path_and_params="/users" + f"?&$count=true&$filter={filter_param_string}"
-            else:
-                path_and_params="/users"
-        else:
-            if filter is not None:
-                path_and_params="/users?$select="+",".join(select) + f"&$count=true&$filter={filter_param_string}"
-            else:
-                path_and_params="/users?$select="+",".join(select)
-        response = self._send_request( path_and_params )
-        if response:
-            return self._get_all_graph_objects(response)
-        raise GraphRequestFailedException()
+            builder = builder.select("id", "displayName", "appId")
+        elif select is not None:
+            builder = builder.select(*select)
+        if filter is not None:
+            builder = builder.filter(filter).count(True)
+        return builder.get().values()
 
     def get_all_users(self, select=[], filter=None, fast=False):
         if fast:
             results=asyncio.run(self._get_all_users_async())
         else:
-            results=self._get_all_users( select=select, filter=None)
+            results=self._get_all_users( select=select, filter=filter)
         return results
 
 
@@ -454,21 +413,14 @@ class GraphClient( OAuthHTTPClient ):
         return res
 
     def _get_all_service_principals_fast( self, select_string, filter_string ):
-        query_params = {}
-        query_params["$count"] = "true"
-        query_params["$filter"] = filter_string
-        if select_string != '':
-            query_params["$select"] = select_string
-        query_param_string = "&".join([f"{param}={value}" for param, value in query_params.items()])
-        path_and_params=f"/servicePrincipals?{query_param_string}"
-        headers={}
-        if filter is not None:
-            headers={"ConsistencyLevel": "Eventual"}
-
-        response = self._send_request( path_and_params, headers=headers )
-        if response:
-            return self._get_all_graph_objects(response)
-        raise GraphRequestFailedException()
+        builder = (
+            self.call("/servicePrincipals")
+            .filter(filter_string)
+            .count(True)
+        )
+        if select_string:
+            builder = builder.select(*select_string.split(","))
+        return builder.get().values()
 
     def get_all_service_principals( self, select=[], owners=False, fast=False ):
         """Get all service principals in the directory
@@ -496,7 +448,7 @@ class GraphClient( OAuthHTTPClient ):
             A list of dictionaries, containing service principal information
 
         Raises:
-            GraphRequestFailedException: An error occurred accessing the Graph API
+            AzolHTTPError: An error occurred accessing the Graph API
         """
         if fast:
             results=asyncio.run(self._get_all_service_principals_async(select=select, owners=owners))
@@ -506,31 +458,15 @@ class GraphClient( OAuthHTTPClient ):
 
 
     def _get_all_service_principals( self, select=[], owners=False ):
-        
-        path="/servicePrincipals"
-        expand_parameter="owners($select=id,displayName)"
-        default_attributes=["id", "displayName"]
-        query_parameters = {}
-        if select != None:
-            all_attributes = set(default_attributes + select)
-            if owners == True:
-                all_attributes.add("owners")
-            select_parameter = ",".join(list(all_attributes))
-            query_parameters["$select"] = select_parameter
-        else:
-            select_parameter = ''
-        
-        if owners == True:
-            query_parameters["$expand"] = expand_parameter
-        
-        concatenated_params = "&".join([f"{param}={value}" for param, value in query_parameters.items()])
-        path_and_params = f"{path}?{concatenated_params}"
-
-        response = self._send_request( path_and_params )
-        
-        if response:
-            return self._get_all_graph_objects(response)
-        raise GraphRequestFailedException()
+        builder = self.call("/servicePrincipals")
+        if select is not None:
+            attrs = ["id", "displayName", *select]
+            if owners:
+                attrs.append("owners")
+            builder = builder.select(*attrs)
+        if owners:
+            builder = builder.expand("owners", select=("id", "displayName"))
+        return builder.get().values()
 
     def _gets_all_service_principals( self, select=[], filter=None ):
         """Get all service principals in the directory.
@@ -542,7 +478,7 @@ class GraphClient( OAuthHTTPClient ):
             A list of objects containing object id and displayName of all service principals
 
         Raises:
-            GraphRequestFailedException: An error occurred accessing the Graph API
+            AzolHTTPError: An error occurred accessing the Graph API
         """
         pass
 
@@ -565,32 +501,17 @@ class GraphClient( OAuthHTTPClient ):
             A list of dictionaries, containing application information
 
         Raises:
-            GraphRequestFailedException: An error occurred accessing the Graph API
+            AzolHTTPError: An error occurred accessing the Graph API
         """
-        path="/applications"
-        expand_parameter="owners($select=id,displayName)"
-        default_attributes=["id", "displayName"]
-        query_parameters = {}
-        if select != None:
-            all_attributes = set(default_attributes + select)
-            if owners == True:
-                all_attributes.add("owners")
-            select_parameter = ",".join(list(all_attributes))
-            query_parameters["$select"] = select_parameter
-        else:
-            select_parameter = ''
-        
-        if owners == True:
-            query_parameters["$expand"] = expand_parameter
-        
-        concatenated_params = "&".join([f"{param}={value}" for param, value in query_parameters.items()])
-        path_and_params = f"{path}?{concatenated_params}"
-
-        response = self._send_request( path_and_params )
-        
-        if response:
-            return self._get_all_graph_objects(response)
-        raise GraphRequestFailedException()
+        builder = self.call("/applications")
+        if select is not None:
+            attrs = ["id", "displayName", *select]
+            if owners:
+                attrs.append("owners")
+            builder = builder.select(*attrs)
+        if owners:
+            builder = builder.expand("owners", select=("id", "displayName"))
+        return builder.get().values()
 
     def get_directory_role_assignments( self, object=None ):
         """Get directory role assignments.
@@ -601,15 +522,17 @@ class GraphClient( OAuthHTTPClient ):
             A list of dictionaries containing role assignment metadata
 
         Raises:
-            GraphRequestFailedException: An error occurred accessing the Graph API
+            AzolHTTPError: An error occurred accessing the Graph API
         """
-        if object is None:
-            response = self._send_request( "/roleManagement/directory/roleAssignments?$expand=roleDefinition($select=id,displayName)&select=roleDefinition,roleDefinitionId,principalId,resourceScope,directoryScopeId,principalOrganizationId" )
-        else:
-            response = self._send_request( f"/roleManagement/directory/roleAssignments?$expand=roleDefinition($select=id,displayName)&select=roleDefinition,roleDefinitionId,principalId,resourceScope,directoryScopeId,principalOrganizationId&$count=true&$filter=principalId eq '{object}'" )
-        if response:
-            return self._get_all_graph_objects(response)
-        raise GraphRequestFailedException()
+        builder = (
+            self.call("/roleManagement/directory/roleAssignments")
+            .expand("roleDefinition", select=("id", "displayName"))
+            .select("roleDefinition", "roleDefinitionId", "principalId", "resourceScope",
+                    "directoryScopeId", "principalOrganizationId")
+        )
+        if object is not None:
+            builder = builder.filter(f"principalId eq '{object}'").count(True)
+        return builder.get().values()
 
     def delete_directory_role_assignments( self, assignment_id ):
         """Remove an Entra ID role from a principal in the directory.
@@ -621,13 +544,13 @@ class GraphClient( OAuthHTTPClient ):
             A list of dictionaries containing the graph response to the deletion
 
         Raises:
-            GraphRequestFailedException: An error occurred accessing the Graph API
+            AzolHTTPError: An error occurred accessing the Graph API
         """
-        response = self._send_request( f"/roleManagement/directory/roleAssignments/{assignment_id}",
-                                       method="DELETE" )
-        if response:
-            return response.json()
-        raise GraphRequestFailedException()
+        return (
+            self.call(f"/roleManagement/directory/roleAssignments/{assignment_id}")
+            .delete()
+            .json()
+        )
 
     def add_directory_role_assignment( self, role_definition_id, principal_id ):
         """Assign an Entra ID role to a principal in the directory.
@@ -640,7 +563,7 @@ class GraphClient( OAuthHTTPClient ):
             A dictionary containing the graph ressponse
 
         Raises:
-            GraphRequestFailedException: An error occurred accessing the Graph API
+            AzolHTTPError: An error occurred accessing the Graph API
         """
         body = {
             "@odata.type": "#microsoft.graph.unifiedRoleAssignment",
@@ -648,11 +571,13 @@ class GraphClient( OAuthHTTPClient ):
             "principalId": principal_id,
             "directoryScopeId": "/"
         }
-        response = self._send_request( "/roleManagement/directory/roleAssignments",
-                                       method="POST", success_code=201, json=body )
-        if response:
-            return response.json()
-        raise GraphRequestFailedException()
+        return (
+            self.call("/roleManagement/directory/roleAssignments")
+            .body(body)
+            .expect(201)
+            .post()
+            .json()
+        )
 
     def add_app_owner( self, app_object_id, principal_id ):
         """Add an owner to an application object.
@@ -665,18 +590,18 @@ class GraphClient( OAuthHTTPClient ):
             A dictionary containing the graph ressponse
 
         Raises:
-            GraphRequestFailedException: An error occurred accessing the Graph API
+            AzolHTTPError: An error occurred accessing the Graph API
         """
         body = {
             "@odata.id": f"https://graph.microsoft.com/v1.0/directoryObjects/{principal_id}"
         }
         # ERROR: this always errors out, even if it succeeds. its a requests library error
-        response = self._send_request( f"/applications/{app_object_id}/owners/$ref",
-                                       method="POST", json=body )
-
-        if response:
-            return response.json()
-        raise GraphRequestFailedException()
+        return (
+            self.call(f"/applications/{app_object_id}/owners/$ref")
+            .body(body)
+            .post()
+            .json()
+        )
 
     def remove_app_owner( self, app_object_id, principal_id ):
         """Remove an owner from an application object.
@@ -689,13 +614,13 @@ class GraphClient( OAuthHTTPClient ):
             A dictionary containing the graph ressponse
 
         Raises:
-            GraphRequestFailedException: An error occurred accessing the Graph API
+            AzolHTTPError: An error occurred accessing the Graph API
         """
-        response = self._send_request( f"/applications/{app_object_id}/owners/{principal_id}/$ref",
-                                       method="DELETE")
-        if response:
-            return response.json()
-        raise GraphRequestFailedException()
+        return (
+            self.call(f"/applications/{app_object_id}/owners/{principal_id}/$ref")
+            .delete()
+            .json()
+        )
 
     def get_all_service_principals_owners( self ):
         """Get all owners of all service principals.
@@ -708,13 +633,14 @@ class GraphClient( OAuthHTTPClient ):
             names, and owners
 
         Raises:
-            GraphRequestFailedException: An error occurred accessing the Graph API
+            AzolHTTPError: An error occurred accessing the Graph API
         """
-        response = self._send_request( "/servicePrincipals?$expand=owners($select=id,displayName)&"
-                                       "$select=owners,id,appId,displayName" )
-        if response:
-            return self._get_all_graph_objects(response)
-        raise GraphRequestFailedException()
+        return (
+            self.call("/servicePrincipals")
+            .expand("owners", select=("id", "displayName"))
+            .select("owners", "id", "appId", "displayName")
+            .get().values()
+        )
 
     def get_all_application_owners( self ):
         """Get all owners of all application objects.
@@ -727,13 +653,14 @@ class GraphClient( OAuthHTTPClient ):
             names, and owners
 
         Raises:
-            GraphRequestFailedException: An error occurred accessing the Graph API
+            AzolHTTPError: An error occurred accessing the Graph API
         """
-        response = self._send_request( "/applications?$expand=owners($select=id,displayName)&"
-                                       "$select=owners,id,appId,displayName" )
-        if response:
-            return self._get_all_graph_objects(response)
-        raise GraphRequestFailedException()
+        return (
+            self.call("/applications")
+            .expand("owners", select=("id", "displayName"))
+            .select("owners", "id", "appId", "displayName")
+            .get().values()
+        )
 
     def get_all_groups_and_memberships( self ):
         """Get all groups and group memberships.
@@ -744,13 +671,14 @@ class GraphClient( OAuthHTTPClient ):
             A list of dictionaries, containing group ids, names, and nested relationships
 
         Raises:
-            GraphRequestFailedException: An error occurred accessing the Graph API
+            AzolHTTPError: An error occurred accessing the Graph API
         """
-        response = self._send_request( "/groups?$expand=memberOf($select=id,displayName)"
-                                       "&$select=memberOf,id,displayName" )
-        if response:
-            return self._get_all_graph_objects(response)
-        raise GraphRequestFailedException()
+        return (
+            self.call("/groups")
+            .expand("memberOf", select=("id", "displayName"))
+            .select("memberOf", "id", "displayName")
+            .get().values()
+        )
 
     def get_all_groups( self, select=[], owners=False ):
         """Get all groups in Entra Id.
@@ -771,32 +699,17 @@ class GraphClient( OAuthHTTPClient ):
             A list of dictionaries, containing group information
 
         Raises:
-            GraphRequestFailedException: An error occurred accessing the Graph API
+            AzolHTTPError: An error occurred accessing the Graph API
         """
-        path="/groups"
-        expand_parameter="owners($select=id,displayName)"
-        default_attributes=["id", "displayName"]
-        query_parameters = {}
-        if select != None:
-            all_attributes = set(default_attributes + select)
-            if owners == True:
-                all_attributes.add("owners")
-            select_parameter = ",".join(list(all_attributes))
-            query_parameters["$select"] = select_parameter
-        else:
-            select_parameter = ''
-        
-        if owners == True:
-            query_parameters["$expand"] = expand_parameter
-        
-        concatenated_params = "&".join([f"{param}={value}" for param, value in query_parameters.items()])
-        path_and_params = f"{path}?{concatenated_params}"
-
-        response = self._send_request( path_and_params )
-        
-        if response:
-            return self._get_all_graph_objects(response)
-        raise GraphRequestFailedException()
+        builder = self.call("/groups")
+        if select is not None:
+            attrs = ["id", "displayName", *select]
+            if owners:
+                attrs.append("owners")
+            builder = builder.select(*attrs)
+        if owners:
+            builder = builder.expand("owners", select=("id", "displayName"))
+        return builder.get().values()
 
     def get_all_groups_and_owners( self ):
         """Get all group owners in all Entra ID groups.
@@ -807,29 +720,30 @@ class GraphClient( OAuthHTTPClient ):
             A list of dictionaries, containing groupIds, groupNames, and owners
 
         Raises:
-            GraphRequestFailedException: An error occurred accessing the Graph API
+            AzolHTTPError: An error occurred accessing the Graph API
         """
-        response = self._send_request( "/groups?$expand=owners($select=id,displayName)"
-                                       "&$select=owners,id,displayName" )
-        if response:
-            return self._get_all_graph_objects(response)
-        raise GraphRequestFailedException()
+        return (
+            self.call("/groups")
+            .expand("owners", select=("id", "displayName"))
+            .select("owners", "id", "displayName")
+            .get().values()
+        )
 
     def get_graph_role_assignments( self ):
         """
             Get all role assignments to the graph API
         """
-        response = self._send_request( "/serviceprincipals(appid='00000003-0000-0000-c000-000000000000')/appRoleAssignedTo" )
-        if response:
-            roles = self._get_all_graph_objects(response)
-            for role in roles:
-                role_id=role["appRoleId"]
-                if role_id in appPermissionNameMap.keys():
-                    role["roleName"] = appPermissionNameMap[role_id]
-                else:
-                    role["roleName"] = "unknown"
-            return roles
-        raise GraphRequestFailedException()
+        roles = (
+            self.call("/servicePrincipals(appId='00000003-0000-0000-c000-000000000000')/appRoleAssignedTo")
+            .get().values()
+        )
+        for role in roles:
+            role_id=role["appRoleId"]
+            if role_id in appPermissionNameMap.keys():
+                role["roleName"] = appPermissionNameMap[role_id]
+            else:
+                role["roleName"] = "unknown"
+        return roles
 
     def get_all_sp_api_permissions( self ):
         """Get all the API permissions assigned to all service principals.
@@ -838,25 +752,28 @@ class GraphClient( OAuthHTTPClient ):
            A list of dictionaries with API permissions assigned to all service principal
 
         Raises:
-            GraphRequestFailedException: An error occurred accessing the Graph API
+            AzolHTTPError: An error occurred accessing the Graph API
         """
-        response = self._send_request( "/servicePrincipals?$expand=appRoleAssignments("
-                                       "$select=resourceId,resourceDisplayName,principalType,"
-                                       "appRoleId)&$select=appRoleAssignments,id,appId,displayName" )
-        if response:
-            sps = self._get_all_graph_objects(response)
-            for sp in sps:
-                for ass in sp["appRoleAssignments"]:
-                    if ass["appRoleId"] in appPermissionNameMap.keys():
-                        ass["azolannotations"] = {
-                            "permissionName": appPermissionNameMap[ass["appRoleId"]]
-                        }
-                    else:
-                        ass["azolannotations"] = {
-                            "permissionName": "unknown"
-                        }
-            return sps
-        raise GraphRequestFailedException()
+        sps = (
+            self.call("/servicePrincipals")
+            .expand(
+                "appRoleAssignments",
+                select=("resourceId", "resourceDisplayName", "principalType", "appRoleId"),
+            )
+            .select("appRoleAssignments", "id", "appId", "displayName")
+            .get().values()
+        )
+        for sp in sps:
+            for ass in sp["appRoleAssignments"]:
+                if ass["appRoleId"] in appPermissionNameMap.keys():
+                    ass["azolannotations"] = {
+                        "permissionName": appPermissionNameMap[ass["appRoleId"]]
+                    }
+                else:
+                    ass["azolannotations"] = {
+                        "permissionName": "unknown"
+                    }
+        return sps
 
     #def get_all_sp_delegated_permissions( self ): # TODO: currently errors
     #    """Get all the API permissions assigned to all service principals.
@@ -865,13 +782,13 @@ class GraphClient( OAuthHTTPClient ):
     #       A list of dictionaries with API permissions assigned to all service principal
     #
     #    Raises:
-    #        GraphRequestFailedException: An error occurred accessing the Graph API
+    #        AzolHTTPError: An error occurred accessing the Graph API
     #    """
     #    response = self._send_request( "/servicePrincipals?&$select=oauth2PermissionGrants,"
     #                                   "id,displayName" )
     #    if response:
     #        return self._get_all_graph_objects(response)
-    #    raise GraphRequestFailedException()
+    #    raise AzolHTTPError()
 
     def get_service_principal(self, object_id=None, client_id=None ):
         """Get service principals.
@@ -880,15 +797,13 @@ class GraphClient( OAuthHTTPClient ):
            A list of dictionaries containing service principal properties from Graph
 
         Raises:
-            GraphRequestFailedException: An error occurred accessing the Graph API
+            AzolHTTPError: An error occurred accessing the Graph API
         """
         if client_id is not None:
-            response = self._send_request( f"/servicePrincipals(appId='{client_id}')" )
+            path = f"/servicePrincipals(appId='{client_id}')"
         else:
-            response = self._send_request( f"/servicePrincipals/{object_id}" )
-        if response:
-            return response.json()
-        raise GraphRequestFailedException()
+            path = f"/servicePrincipals/{object_id}"
+        return self.call(path).get().json()
 
     def get_all_sp_reply_urls( self ):
         """Get all the reply Urls for all service principals.
@@ -898,12 +813,13 @@ class GraphClient( OAuthHTTPClient ):
            their reply urls.
 
         Raises:
-            GraphRequestFailedException: An error occurred accessing the Graph API
+            AzolHTTPError: An error occurred accessing the Graph API
         """
-        response = self._send_request( "/servicePrincipals?&$select=replyUrls,id,displayName" )
-        if response:
-            return self._get_all_graph_objects(response)
-        raise GraphRequestFailedException()
+        return (
+            self.call("/servicePrincipals")
+            .select("replyUrls", "id", "displayName")
+            .get().values()
+        )
 
     def get_api_permissions( self, sp_object_id ):
         """Get all API permissions assigned to a service principal.
@@ -918,17 +834,17 @@ class GraphClient( OAuthHTTPClient ):
            its API permissions 
 
         Raises:
-            GraphRequestFailedException: An error occurred accessing the Graph API
+            AzolHTTPError: An error occurred accessing the Graph API
         """
-        response = self._send_request( f"/servicePrincipals/{sp_object_id}/appRoleAssignments" )
-        if response:
-            api_permissions=self._get_all_graph_objects(response)
-            for permission in api_permissions:
-                permission["azolAnnotations"] = {
-                        "permissionName": appPermissionNameMap[permission["appRoleId"]]
-                }
-            return api_permissions
-        raise GraphRequestFailedException()
+        api_permissions = (
+            self.call(f"/servicePrincipals/{sp_object_id}/appRoleAssignments")
+            .get().values()
+        )
+        for permission in api_permissions:
+            permission["azolAnnotations"] = {
+                    "permissionName": appPermissionNameMap[permission["appRoleId"]]
+            }
+        return api_permissions
 
     def get_delegated_permissions( self, sp_object_id ):
         """Get all the delegated permissions assigned to a service principal.
@@ -946,22 +862,22 @@ class GraphClient( OAuthHTTPClient ):
            its consented delegated permissions 
 
         Raises:
-            GraphRequestFailedException: An error occurred accessing the Graph API
+            AzolHTTPError: An error occurred accessing the Graph API
         """
-        response = self._send_request( f"/servicePrincipals/{sp_object_id}/oauth2PermissionGrants" )
-        if response.status_code != 200:
-            logging.error( "error on GRAPH API request. Raw error: %s", response.content )
-            raise GraphRequestFailedException()
-
-        delegated_permissions=response.json()["value"]
+        delegated_permissions = (
+            self.call(f"/servicePrincipals/{sp_object_id}/oauth2PermissionGrants")
+            .get().values()
+        )
         annotated_permissions=[]
         for p in delegated_permissions:
             annotated_permission = p.copy()
             if p["consentType"] == "AllPrincipals":
                 annotated_permission["principalName"] = "all"
             else:
-                resp = self._send_request( f"/directoryObjects/{p[ 'principalId' ]}" )
-                obj = resp.json()
+                obj = (
+                    self.call(f"/directoryObjects/{p['principalId']}")
+                    .get().json()
+                )
                 principal_name = obj["userPrincipalName"]
                 annotated_permission[ "principalName" ] = principal_name
             annotated_permissions.append(annotated_permission)
@@ -978,7 +894,7 @@ class GraphClient( OAuthHTTPClient ):
            A dictionary mapping object ids to users, groups and service principals
 
         Raises:
-            GraphRequestFailedException: An error occurred accessing the Graph API
+            AzolHTTPError: An error occurred accessing the Graph API
         """
         users=self.get_all_users()
         service_principals=self.get_all_service_principals()
@@ -1022,18 +938,19 @@ class GraphClient( OAuthHTTPClient ):
            A dictionary containing the properties for the new app secret
 
         Raises:
-            GraphRequestFailedException: An error occurred accessing the Graph API
+            AzolHTTPError: An error occurred accessing the Graph API
         """
         body= {
             "passwordCredential": {
                 "displayName": name
             }
         }
-        response = self._send_request( f"/applications/{app_object_id}/addPassword",
-                                      method="POST", json=body )
-        if response:
-            return response.json()
-        raise GraphRequestFailedException()
+        return (
+            self.call(f"/applications/{app_object_id}/addPassword")
+            .body(body)
+            .post()
+            .json()
+        )
 
     def add_sp_secret( self, sp_object_id, name="inconspicuous" ):
         """Add a secret to an application object in Entra ID.
@@ -1047,18 +964,19 @@ class GraphClient( OAuthHTTPClient ):
            A dictionary containing the properties for the new sp secret
 
         Raises:
-            GraphRequestFailedException: An error occurred accessing the Graph API
+            AzolHTTPError: An error occurred accessing the Graph API
         """
         body= {
             "passwordCredential": {
                 "displayName": name
             }
         }
-        response = self._send_request( f"/servicePrincipals/{sp_object_id}/addPassword",
-                                       method="POST", json=body )
-        if response:
-            return response.json()
-        raise GraphRequestFailedException()
+        return (
+            self.call(f"/servicePrincipals/{sp_object_id}/addPassword")
+            .body(body)
+            .post()
+            .json()
+        )
 
     def get_directory_object( self, object_id ):
         """Get a directory object from its object id.
@@ -1073,14 +991,12 @@ class GraphClient( OAuthHTTPClient ):
            A dictionary containing information from graph about the object
 
         Raises:
-            GraphRequestFailedException: An error occurred accessing the Graph API
+            AzolHTTPError: An error occurred accessing the Graph API
         """
-        response = self._send_request( f"/directoryObjects/{object_id}" )
-
-        if response:
-            directory_object = response.json()
-            return directory_object
-        raise GraphRequestFailedException()
+        return (
+            self.call(f"/directoryObjects/{object_id}")
+            .get().json()
+        )
 
     def try_get_object_type( self, object_id ):
         """Get a directory object type from its object id.
@@ -1096,17 +1012,15 @@ class GraphClient( OAuthHTTPClient ):
                     directory object
 
         Raises:
-            GraphRequestFailedException: An error occurred accessing the Graph API
+            AzolHTTPError: An error occurred accessing the Graph API
         """
-        response = self._send_request( f"/directoryObjects/{object_id}" )
-
-        if response:
-            if "@odata.type" in response.json().keys():
-
-                directory_object_type = response.json()[ "@odata.type" ]
-                return directory_object_type
-            return None
-        raise GraphRequestFailedException()
+        body = (
+            self.call(f"/directoryObjects/{object_id}")
+            .get().json()
+        )
+        if "@odata.type" in body:
+            return body["@odata.type"]
+        return None
 
     def get_all_service_principal_federated_identities( self ):
         """Get all federated identities for service principals in the tenant.
@@ -1115,17 +1029,16 @@ class GraphClient( OAuthHTTPClient ):
            A list of federated identity objects for service principals with a federated identity
 
         Raises:
-            GraphRequestFailedException: An error occurred accessing the Graph API
+            AzolHTTPError: An error occurred accessing the Graph API
         """
-        response = self._send_request( "/servicePrincipals?$expand=federatedIdentityCredentials&"
-                                       "select=federatedIdentityCredentials,id,appId,displayName"
-                                       "&$filter=not(federatedIdentityCredentials/$count eq 0)",
-                                        headers={"ConsistencyLevel":"eventual"} )
-        if response.status_code != 200:
-            logging.error( "error on GRAPH API request. Raw error: %s ", response.content )
-            raise GraphRequestFailedException()
-
-        return self._get_all_graph_objects(response)
+        return (
+            self.call("/servicePrincipals")
+            .expand("federatedIdentityCredentials")
+            .select("federatedIdentityCredentials", "id", "appId", "displayName")
+            .filter("not(federatedIdentityCredentials/$count eq 0)")
+            .header("ConsistencyLevel", "eventual")
+            .get().values()
+        )
 
     def get_all_application_federated_identities( self ):
         """Get all federated identities for applications in the tenant.
@@ -1134,17 +1047,16 @@ class GraphClient( OAuthHTTPClient ):
            A list of federated identity objects for applications with a federated identity
 
         Raises:
-            GraphRequestFailedException: An error occurred accessing the Graph API
+            AzolHTTPError: An error occurred accessing the Graph API
         """
-        response = self._send_request( "/applications?$expand=federatedIdentityCredentials&"
-                                       "select=federatedIdentityCredentials,id,appId,displayName"
-                                       "&$filter=not(federatedIdentityCredentials/$count eq 0)",
-                                        headers={"ConsistencyLevel":"eventual"} )
-        if response.status_code != 200:
-            logging.error( "error on GRAPH API request. Raw error: %s ", response.content )
-            raise GraphRequestFailedException()
-
-        return self._get_all_graph_objects(response)
+        return (
+            self.call("/applications")
+            .expand("federatedIdentityCredentials")
+            .select("federatedIdentityCredentials", "id", "appId", "displayName")
+            .filter("not(federatedIdentityCredentials/$count eq 0)")
+            .header("ConsistencyLevel", "eventual")
+            .get().values()
+        )
 
     def create_new_local_service_principal( self, name="inconspicuous" ):
         """Create a new service principal.
@@ -1163,18 +1075,19 @@ class GraphClient( OAuthHTTPClient ):
                     including the newly created secret
 
         Raises:
-            GraphRequestFailedException: An error occurred accessing the Graph API
+            AzolHTTPError: An error occurred accessing the Graph API
         """
         body = {
             "displayName": name
         }
-        response = self._send_request( "/applications", method="POST", json=body )
+        app = (
+            self.call("/applications")
+            .body(body)
+            .expect(201)
+            .post()
+            .json()
+        )
 
-        if response.status_code != 201:
-            logging.error( "error on GRAPH API request. Raw error: %s ", response.content )
-            raise GraphRequestFailedException()
-
-        app = response.json()
         app_id = app[ "appId" ]
         app_object_id = app[ "id" ]
 
@@ -1182,13 +1095,14 @@ class GraphClient( OAuthHTTPClient ):
         body = {
             "appId": app_id
         }
-        response = self._send_request( "/servicePrincipals", method="POST", json=body )
+        sp = (
+            self.call("/servicePrincipals")
+            .body(body)
+            .expect(201)
+            .post()
+            .json()
+        )
 
-        if response.status_code != 201:
-            logging.error( "error on GRAPH API request. Raw error: %s ", response.content )
-            raise GraphRequestFailedException()
-
-        sp = response.json()
         sp_id = sp[ "id" ]
 
         # create a secret for the service principal
@@ -1197,14 +1111,12 @@ class GraphClient( OAuthHTTPClient ):
                 "displayName": "inconspicuous"
             }
         }
-        response = self._send_request( f"/servicePrincipals/{sp_id}/addPassword",
-                                      method="POST", json=body )
-
-        if response.status_code != 200:
-            logging.error( "error on GRAPH API request. Raw error: %s ", response.content )
-            raise GraphRequestFailedException()
-
-        secret = response.json()[ "secretText" ]
+        secret = (
+            self.call(f"/servicePrincipals/{sp_id}/addPassword")
+            .body(body)
+            .post()
+            .json()
+        )[ "secretText" ]
 
         output = {
             "clientId": app_id,
@@ -1234,15 +1146,19 @@ class GraphClient( OAuthHTTPClient ):
            (string) A dictionary containing properties for the new service principal
 
         Raises:
-            GraphRequestFailedException: An error occurred accessing the Graph API
+            AzolHTTPError: An error occurred accessing the Graph API
         """
         # Create the service principal
         body = {
             "appId": client_id
         }
-        response = self._send_request( "/servicePrincipals", method="POST", json=body, success_code=201 )
-
-        sp = response.json()
+        sp = (
+            self.call("/servicePrincipals")
+            .body(body)
+            .expect(201)
+            .post()
+            .json()
+        )
         sp_id = sp[ "id" ]
 
         output = {
@@ -1262,12 +1178,24 @@ class GraphClient( OAuthHTTPClient ):
            Request.Response object from the GET request
 
         Raises:
-            GraphRequestFailedException: An error occurred accessing the Graph API
+            AzolHTTPError: An error occurred accessing the Graph API
         """
-        response = self._send_request( path, headers=headers )
-        if response:
-            return response.json()
-        raise GraphRequestFailedException()
+        if "?" in path:
+            from urllib.parse import parse_qs, urlparse
+            parsed = urlparse(path)
+            rel = parsed.path if parsed.path.startswith("/") else f"/{parsed.path}"
+            query = {k: v[0] if len(v) == 1 else v for k, v in parse_qs(parsed.query).items()}
+            return (
+                self.call(rel)
+                .params(query)
+                .headers(headers)
+                .get()
+                .json()
+            )
+        builder = self.call(path)
+        for key, value in headers.items():
+            builder = builder.header(key, value)
+        return builder.get().json()
 
     def post( self, path, data ):
         """Send a POST request to Graph, and return the raw results
@@ -1282,9 +1210,7 @@ class GraphClient( OAuthHTTPClient ):
             A dictionary containing the raw results from the ARM request.
 
         """
-        response = self._send_request( path, method="POST",
-                                              json=data )
-        return response.json()
+        return self.call(path).body(data).post().json()
 
     def put( self, path, data ):
         """Send a PUT request to Graph, and return the raw results
@@ -1299,9 +1225,7 @@ class GraphClient( OAuthHTTPClient ):
             A dictionary containing the raw results from the ARM request.
 
         """
-        response = self._send_request( path, method="PUT",
-                                              json=data )
-        return response.json()
+        return self.call(path).body(data).put().json()
 
     def patch( self, path, data ):
         """Send a PATCH request to Graph, and return the raw results
@@ -1316,9 +1240,7 @@ class GraphClient( OAuthHTTPClient ):
             A dictionary containing the raw results from the ARM request.
 
         """
-        response = self._send_request( path, method="PATCH",
-                                              json=data )
-        return response.json()
+        return self.call(path).body(data).patch().json()
 
     def delete( self, path ):
         """Make a DELETE request to a specific API path within the Graph API.
@@ -1330,9 +1252,6 @@ class GraphClient( OAuthHTTPClient ):
            Request.Response object from the DELETE request
 
         Raises:
-            GraphRequestFailedException: An error occurred accessing the Graph API
+            AzolHTTPError: An error occurred accessing the Graph API
         """
-        response = self._send_request( path, method="DELETE" )
-        if response:
-            return response.json()
-        raise GraphRequestFailedException()
+        return self.call(path).delete().json()

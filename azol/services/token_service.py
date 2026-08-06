@@ -25,8 +25,9 @@ from datetime import datetime, timedelta
 from importlib import import_module
 
 from .token_service_helpers import build_scope_string, auth_code_flow, ests_login_flow
+from azol.http import AzolHTTPError
 
-class IdentityPlatformRequestFailedException(Exception):
+class IdentityPlatformRequestFailedException(AzolHTTPError):
     """
         Exception that is raised when requests to the identity platform
         unexpectedly fail

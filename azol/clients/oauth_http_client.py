@@ -1,11 +1,12 @@
 """Module containing a parent class for an azol http client"""
 import uuid
 import logging
-import requests
 from azol.utils import is_token_expired, get_tenant_id, parse_jwt
 from azol.services.token_service import TokenService as tService
 from azol.credentials import User
 from azol.constants import UserAgents, OAUTHFLOWS, known_client_redirect_uris
+from azol.http import OAuthRequestBuilder, create_session
+from azol.http.session import DEFAULT_TIMEOUT
 
 class OAuthHTTPClient:
     """
@@ -15,7 +16,7 @@ class OAuthHTTPClient:
     def __init__( self, cred, oauth_resource, base_url=None, redirect_uri=None,
                   tenant=None, azol_id=None, oauth_flow=None, secrets_provider=None,
                   use_persistent_cache=True, auto_refresh=True, scopes=[], use_token_broker=False,
-                  useragent=UserAgents.Windows_Edge):
+                  useragent=UserAgents.Windows_Edge, session=None, request_timeout=DEFAULT_TIMEOUT):
         if tenant is None:
             if cred.credentialType != "user":
                 raise Exception("tenant must be specified if credential is not of type 'user'")
@@ -34,6 +35,11 @@ class OAuthHTTPClient:
         self.openid_scope=True
         self.offline_access_scope=True
         self._baseurl = base_url
+        self._request_timeout = request_timeout
+        self._owns_session = session is None
+        self._session = session if session is not None else create_session(
+            user_agent=useragent
+        )
 
         self._tenant = tenant
         self._resource = oauth_resource
@@ -73,6 +79,18 @@ class OAuthHTTPClient:
         if azol_id is None:
             azol_id = str(uuid.uuid4())
         self._id=azol_id
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        self.close()
+
+    def close(self):
+        """Close the underlying ``requests.Session`` if this client owns it."""
+        if getattr(self, "_owns_session", False) and getattr(self, "_session", None) is not None:
+            self._session.close()
+            self._session = None
 
     def get_token_claims( self ):
         """Get claims in the current token
@@ -267,18 +285,8 @@ class OAuthHTTPClient:
         """
         self._current_token = token
 
-    def _send_request( self, path=None, query_parameters=None, data=None, method="GET",
-                       json=None, url=None, headers=None ):
-        """
-            Internal method. Send request
-        """
-        if query_parameters is None:
-            query_parameters={}
-        if url is not None:
-            request_url = url
-        else:
-            request_url=f"{self._baseurl}{path}"
-        #current token is the token that was last set when calling "fetchAndCacheToken"
+    def _ensure_access_token(self):
+        """Ensure a non-expired access token is available and return it."""
         access_token = self.get_current_token()
 
         if access_token is None and self._auto_refresh is False:
@@ -293,16 +301,78 @@ class OAuthHTTPClient:
         elif access_token is None and self._auto_refresh is True:
             self.fetch_token()
 
-        access_token = self.get_current_token()
-        if headers is None:
-            headers = {'Authorization': f"Bearer {access_token}", "User-Agent": self._useragent }
-        else:
-            headers['Authorization'] = f"Bearer {access_token}" 
-            headers["User-Agent"] = self._useragent
-        resp = requests.request( method, request_url, data=data, params=query_parameters,
-                                 headers=headers, json=json, timeout=10)
-        return resp
-    
+        return self.get_current_token()
+
+    def request(self, exception_cls=None):
+        """Return a fluent OAuth request builder bound to this client's session.
+
+        Args:
+            exception_cls: Optional exception type raised on unexpected status
+                codes when the builder is configured to raise (via ``expect`` /
+                default raise-on-error). Defaults to status-based ``AzolHTTPError``
+                mapping.
+
+        Returns:
+            OAuthRequestBuilder
+        """
+        return OAuthRequestBuilder(
+            self._session,
+            ensure_token=self._ensure_access_token,
+            user_agent=self._useragent,
+            base_url=self._baseurl,
+            default_timeout=self._request_timeout,
+            exception_cls=exception_cls,
+        )
+
+    def _build_request( self, path=None, query_parameters=None, data=None, method="GET",
+                        json=None, url=None, headers=None, raise_on_error=False,
+                        exception_cls=None ):
+        """Build an ``OAuthHTTPRequest`` without sending it."""
+        if query_parameters is None:
+            query_parameters = {}
+
+        builder = (
+            self.request(exception_cls=exception_cls)
+            .params(query_parameters)
+            .raise_on_error(raise_on_error)
+        )
+        if url is not None:
+            builder.url(url)
+        elif path is not None:
+            builder.path(path)
+        if data is not None:
+            builder.data(data)
+        if json is not None:
+            builder.json(json)
+        if headers is not None:
+            builder.headers(headers)
+
+        verb = getattr(builder, method.lower(), None)
+        if verb is not None and method.lower() in {"get", "post", "put", "patch", "delete"}:
+            return verb()
+        return builder.method(method).build()
+
+    def _send_request( self, path=None, query_parameters=None, data=None, method="GET",
+                       json=None, url=None, headers=None ):
+        """
+            Internal method. Send request.
+
+            Compatibility shim: does not raise on unexpected status codes so
+            existing callers that inspect ``response.status_code`` keep working.
+            Prefer ``self.request()`` for new code.
+        """
+        http_request = self._build_request(
+            path=path,
+            query_parameters=query_parameters,
+            data=data,
+            method=method,
+            json=json,
+            url=url,
+            headers=headers,
+            raise_on_error=False,
+        )
+        return http_request.execute()
+
     def get( self, path, headers=None, query_parameters=None ):
         """Make a get request .
 

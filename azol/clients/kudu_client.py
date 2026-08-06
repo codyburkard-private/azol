@@ -1,10 +1,11 @@
 """A module containing a client for interacting with the Kudu API.
 """
-import logging
+from html.parser import HTMLParser
 
 from azol.clients.oauth_http_client import OAuthHTTPClient
 from azol.constants import OAuthResourceIDs
-from html.parser import HTMLParser
+from azol.http import HttpCall
+
 
 class SCMEnvVarHTMLParser(HTMLParser):
 
@@ -29,11 +30,6 @@ class SCMEnvVarHTMLParser(HTMLParser):
     def handle_data(self, data):
         self.new_data = data
 
-class ScmRequestFailedException(Exception):
-    """
-        Exception that is raised when requests to SCM
-        unexpectedly fail
-    """
 
 class KuduClient( OAuthHTTPClient ):
     """
@@ -43,14 +39,15 @@ class KuduClient( OAuthHTTPClient ):
     def __init__( self, scm_url, *args, **kwargs ):
         super().__init__( oauth_resource=OAuthResourceIDs.Arm, base_url=scm_url, *args, **kwargs)
 
-    def get_env_variables(self):
+    def call(self, path: str) -> HttpCall:
+        """Return a fluent Kudu/SCM call bound to this client.
 
-        response = self._send_request( f"/Env", method="GET" )
-        if response.status_code != 200:
-            logging.error( "%s error on SCM API request to get environment variables"
-                        "Raw error: %s", response.status_code,
-                        response.content )
-            raise ScmRequestFailedException()
+        Failures raise ``AzolHTTPError`` (or a status-specific subclass).
+        """
+        return HttpCall(self, path, next_link_key=None)
+
+    def get_env_variables(self):
+        response = self.call("/Env").get().response
         
         # Get the index of the beginning of the environment variables in HTML
         content = str(response.content)
@@ -67,57 +64,19 @@ class KuduClient( OAuthHTTPClient ):
         return parser.get_env_variables()
 
     def get_processes(self):
-
-        response = self._send_request( f"/api/processes",
-                                    method="GET" )
-        if response.status_code != 200:
-            logging.error( "%s error on SCM API request to get processes"
-                        "Raw error: %s", response.status_code,
-                        response.content )
-            raise ScmRequestFailedException()
-        return response.json()
+        return self.call("/api/processes").get().json()
 
     def get_process(self, pid):
-
-        response = self._send_request( f"/api/processes/{pid}",
-                                    method="GET" )
-        if response.status_code != 200:
-            logging.error( "%s error on SCM API request to get process"
-                        "Raw error: %s", response.status_code,
-                        response.content )
-            raise ScmRequestFailedException()
-        return response.json()
+        return self.call(f"/api/processes/{pid}").get().json()
 
     def get_process_dump(self, pid):
-
-        response = self._send_request( f"/api/processes/{pid}/dump",
-                                    method="GET" )
-        if response.status_code != 200:
-            logging.error( "%s error on SCM API request to get process dump"
-                        "Raw error: %s", response.status_code,
-                        response.content )
-            raise ScmRequestFailedException()
-        return response.content
+        return self.call(f"/api/processes/{pid}/dump").get().content
 
     def ls(self, path):
-        response = self._send_request( f"/api/vfs/{path}",
-                                    method="GET" )
-        if response.status_code != 200:
-            logging.error( "%s error on SCM API request to list directory contents"
-                        "Raw error: %s", response.status_code,
-                        response.content )
-            raise ScmRequestFailedException()
-        return response.json()
+        return self.call(f"/api/vfs/{path}").get().json()
 
     def get_file(self, path):
-        response = self._send_request( f"/api/vfs/{path}",
-                                    method="GET" )
-        if response.status_code != 200:
-            logging.error( "%s error on SCM API request to get file"
-                        "Raw error: %s", response.status_code,
-                        response.content )
-            raise ScmRequestFailedException()
-        return response.content
+        return self.call(f"/api/vfs/{path}").get().content
 
     def command( self, command, directory=None ):
         """Execute a command via the Kudu API.
@@ -125,20 +84,15 @@ class KuduClient( OAuthHTTPClient ):
         Returns:
             A dict containing the results of the command
 
+        Raises:
+            AzolHTTPError: An error occurred accessing the Kudu API
         """
         body={
             "command":command
         }
         if directory is not None:
             body["dir"]=directory
-        raw_response = self.post( "/api/command", json=body )
-
-        if raw_response.status_code != 200:
-            logging.error( "ERROR while running command via kudu: %s", raw_response.content )
-            raise Exception()
-        res = raw_response.json()
-
-        return res
+        return self.call("/api/command").body(body).post().json()
     
     def get_settings( self ):
         """Get settings
@@ -146,32 +100,18 @@ class KuduClient( OAuthHTTPClient ):
         Returns:
             A dict containing the settings
 
+        Raises:
+            AzolHTTPError: An error occurred accessing the Kudu API
         """
-        
-        raw_response = self.get( "/api/settings" )
-
-        if raw_response.status_code != 200:
-            logging.error( "ERROR while running command via kudu: %s", raw_response.content )
-            raise Exception()
-        res = raw_response.json()
-
-        return res
+        return self.call("/api/settings").get().json()
     
     def get_setting( self, setting ):
         """Get setting
         
         Returns:
-            A dict containing the settings
+            Raw setting content
 
+        Raises:
+            AzolHTTPError: An error occurred accessing the Kudu API
         """
-        
-        raw_response = self.get( f"/api/settings/{setting}" )
-
-        if raw_response.status_code != 200:
-            logging.error( "ERROR while running command via kudu: %s", raw_response.content )
-            raise Exception()
-        res = raw_response.content
-
-        return res
-
-      
+        return self.call(f"/api/settings/{setting}").get().content

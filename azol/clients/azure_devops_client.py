@@ -1,10 +1,15 @@
 """A module containing an Azure Devops HTTP Client"""
 import logging
-from azol.clients.oauth_http_client import OAuthHTTPClient
-from azol.constants import OAuthResourceIDs
 from datetime import datetime
 from cryptography.hazmat.primitives.asymmetric import rsa
 import base64
+
+from typing import Optional
+
+from azol.clients.oauth_http_client import OAuthHTTPClient
+from azol.constants import OAuthResourceIDs
+from azol.http import HttpCall, exception_from_response
+
 
 class AzureDevOpsClient( OAuthHTTPClient ):
     """
@@ -18,6 +23,15 @@ class AzureDevOpsClient( OAuthHTTPClient ):
         super().__init__( oauth_resource=devops_resource_id,
                           base_url=devops_base_url, *args, **kwargs)
 
+    def call(self, path: Optional[str] = None) -> HttpCall:
+        """Return a fluent Azure DevOps call bound to this client.
+
+        Pass a relative path, or omit it and use ``.url(...)`` for absolute
+        cross-host endpoints. Failures raise ``AzolHTTPError`` (or a
+        status-specific subclass).
+        """
+        return HttpCall(self, path, next_link_key="nextLink")
+
     def get_agent_pools( self, org_name ):
         '''
             Get all the agent pools that the current credential can read in the organization
@@ -28,11 +42,12 @@ class AzureDevOpsClient( OAuthHTTPClient ):
             Returns:
                 A list of agent pools
         '''
-        query_params = { "api-version": "7.1-preview.1"}
-        url = f"/{org_name}/_apis/distributedtask/pools"
-        resp=self._send_request( url,  method="GET", query_parameters=query_params ) 
-        response_data = resp.json()
-        return response_data
+        return (
+            self.call(f"/{org_name}/_apis/distributedtask/pools")
+            .api_version("7.1-preview.1")
+            .get()
+            .json()
+        )
 
     def get_agents( self, org_name, agent_pool_id ):
         '''
@@ -46,15 +61,16 @@ class AzureDevOpsClient( OAuthHTTPClient ):
             Returns:
                 A list of agents in the pool
         '''
-        query_params = { 
-            "api-version": "7.1-preview.1",
-            "includeAssignedRequest": True,
-            "includeCapabilities": True
-        }
-        url = f"{org_name}/_apis/distributedtask/pools/{agent_pool_id}/agents"
-        resp=self._send_request( url,  method="GET", query_parameters=query_params ) 
-        response_data = resp.json()
-        return response_data
+        return (
+            self.call(
+                f"/{org_name}/_apis/distributedtask/pools/{agent_pool_id}/agents"
+            )
+            .api_version("7.1-preview.1")
+            .param("includeAssignedRequest", True)
+            .param("includeCapabilities", True)
+            .get()
+            .json()
+        )
 
     def get_service_endpoint_types( self, org_name ):
         '''
@@ -66,12 +82,12 @@ class AzureDevOpsClient( OAuthHTTPClient ):
             Returns:
                 A list of service connection objects
         '''
-        query_params = { "api-version": "7.1-preview.1"}
-
-        url = f"/{org_name}/_apis/serviceendpoint/types"
-        resp=self._send_request( url,  method="GET", query_parameters=query_params ) 
-        response_data = resp.json()
-        return response_data
+        return (
+            self.call(f"/{org_name}/_apis/serviceendpoint/types")
+            .api_version("7.1-preview.1")
+            .get()
+            .json()
+        )
 
     def create_agent(self, org_name, pool_id, name):
         '''
@@ -131,9 +147,6 @@ class AzureDevOpsClient( OAuthHTTPClient ):
             "exponent": b64_encoded_exponent
         }
 
-        url = f"/{org_name}/_apis/distributedtask/pools/{pool_id}/agents"
-        
-        query_params = { "api-version": "7.1-preview.1"}
         body = {
             "systemCapabilities": {},
             "maxParallelism": 1,
@@ -149,8 +162,13 @@ class AzureDevOpsClient( OAuthHTTPClient ):
             "status": 0
         }
 
-        resp=self._send_request( url, json=body, method="POST", query_parameters=query_params ) 
-        response_data = resp.json()
+        response_data = (
+            self.call(f"/{org_name}/_apis/distributedtask/pools/{pool_id}/agents")
+            .api_version("7.1-preview.1")
+            .body(body)
+            .post()
+            .json()
+        )
         return (response_data, rsa_params)
 
     def get_service_connection_role_assignments(self, org_name, project_id, endpoint_id):
@@ -171,17 +189,20 @@ class AzureDevOpsClient( OAuthHTTPClient ):
             
             Returns:
                 A list of role assignments
+
+            Raises:
+                AzolHTTPError: An error occurred accessing the Azure DevOps API
         """
-        query_params = { "api-version": "7.1"}
-        url = (f"/{org_name}/_apis/securityroles/scopes/"
-                f"distributedtask.serviceendpointrole/roleassignments/resources/{project_id}_{endpoint_id}" )
-        raw_response = self._send_request( url, query_parameters=query_params)
-        if raw_response.status_code != 200:
-            logging.error( "ERROR while getting service conection role assignments" )
-            logging.error( raw_response.content )
-            raise Exception( "Could not fetch service connection role assignments" )
-            
-        return raw_response.json()["value"]
+        return (
+            self.call(
+                f"/{org_name}/_apis/securityroles/scopes/"
+                f"distributedtask.serviceendpointrole/roleassignments/resources/"
+                f"{project_id}_{endpoint_id}"
+            )
+            .api_version("7.1")
+            .get()
+            .values()
+        )
 
     def get_repositories( self, org_name, project_name ):
         '''
@@ -195,15 +216,12 @@ class AzureDevOpsClient( OAuthHTTPClient ):
                 Returns:
                     A list of repositories
         '''
-        query_params = { "api-version": "7.1"}
-        raw_response = self._send_request( f"/{org_name}/{project_name}/_apis/git/repositories",
-                                           query_parameters=query_params )
-        if raw_response.status_code != 200:
-            logging.error( "ERROR while getting repositories" )
-            logging.error( raw_response.content )
-            raise Exception("Could not fetch repositories")
-            
-        return raw_response.json()
+        return (
+            self.call(f"/{org_name}/{project_name}/_apis/git/repositories")
+            .api_version("7.1")
+            .get()
+            .json()
+        )
 
     def get_repository( self, org_name, project_name, repository_id ):
         '''
@@ -219,15 +237,14 @@ class AzureDevOpsClient( OAuthHTTPClient ):
                 Returns:
                     A python object containing information about the repository
         '''
-        query_params = { "api-version": "7.1"}
-        raw_response = self._send_request( f"/{org_name}/{project_name}/_apis/git/repositories/{repository_id}",
-                                           query_parameters=query_params )
-        if raw_response.status_code != 200:
-            logging.error( "ERROR while getting repository" )
-            logging.error( raw_response.content )
-            raise Exception("Could not fetch repository")
-            
-        return raw_response.json()
+        return (
+            self.call(
+                f"/{org_name}/{project_name}/_apis/git/repositories/{repository_id}"
+            )
+            .api_version("7.1")
+            .get()
+            .json()
+        )
 
 
     def get_pipelines( self, org_name, project_name ):
@@ -242,15 +259,12 @@ class AzureDevOpsClient( OAuthHTTPClient ):
                 Returns:
                     A list of pipelines
         '''
-        query_params = { "api-version": "7.1"}
-        raw_response = self._send_request( f"/{org_name}/{project_name}/_apis/pipelines",
-                                           query_parameters=query_params )
-        if raw_response.status_code != 200:
-            logging.error( "ERROR while getting pipelines" )
-            logging.error( raw_response.content )
-            raise Exception("Could not fetch pipelines")
-            
-        return raw_response.json()
+        return (
+            self.call(f"/{org_name}/{project_name}/_apis/pipelines")
+            .api_version("7.1")
+            .get()
+            .json()
+        )
 
     def get_pipeline( self, org_name, project_name, pipeline_id ):
         '''
@@ -266,15 +280,12 @@ class AzureDevOpsClient( OAuthHTTPClient ):
                 Returns:
                     A python object containing information about the pipeline
         '''
-        query_params = { "api-version": "7.1-preview.1"}
-        raw_response = self._send_request( f"/{org_name}/{project_name}/_apis/pipelines/{pipeline_id}",
-                                           query_parameters=query_params )
-        if raw_response.status_code != 200:
-            logging.error( "ERROR while getting pipeline" )
-            logging.error( raw_response.content )
-            raise Exception("Could not fetch pipeline")
-            
-        return raw_response.json()
+        return (
+            self.call(f"/{org_name}/{project_name}/_apis/pipelines/{pipeline_id}")
+            .api_version("7.1-preview.1")
+            .get()
+            .json()
+        )
 
     def get_allowed_pipelines( self, org_name, project_name, endpoint_id ):
         """
@@ -294,14 +305,15 @@ class AzureDevOpsClient( OAuthHTTPClient ):
                 An object containing the allowed pipelines, as high level settings for pipeline authorization
                 for the service connection
         """
-        query_params = { "api-version": "7.1-preview.1"}
-        raw_response = self._send_request( f"/{org_name}/{project_name}/_apis/pipelines/pipelinepermissions/endpoint/{endpoint_id}", query_parameters=query_params )
-        if raw_response.status_code != 200:
-            logging.error( "ERROR while getting allowed pipelines for service connection" )
-            logging.error( raw_response.content )
-            raise Exception("Could not fetch allowed pipelines for service connection")
-            
-        return raw_response.json()
+        return (
+            self.call(
+                f"/{org_name}/{project_name}/_apis/pipelines/"
+                f"pipelinepermissions/endpoint/{endpoint_id}"
+            )
+            .api_version("7.1-preview.1")
+            .get()
+            .json()
+        )
 
     def get_service_connection( self, org_name, project_name, endpoint_id ):
         """
@@ -320,15 +332,15 @@ class AzureDevOpsClient( OAuthHTTPClient ):
             Returns:
                 A service connection
         """
-        query_params = { "api-version": "7.2-preview.4"}
-        raw_response = self._send_request( f"/{org_name}/{project_name}/"
-                                           f"_apis/serviceendpoint/endpoints/{endpoint_id}",
-                                           query_parameters=query_params )
-        if raw_response.status_code != 200:
-            logging.error( "ERROR while getting devops project service connections" )
-            logging.error( raw_response.json() )
-            raise Exception("Could not fetch service connections for project")
-        return raw_response.json()
+        return (
+            self.call(
+                f"/{org_name}/{project_name}/"
+                f"_apis/serviceendpoint/endpoints/{endpoint_id}"
+            )
+            .api_version("7.2-preview.4")
+            .get()
+            .json()
+        )
 
     def try_download_permissions_report( self, report_url ):
         """
@@ -341,25 +353,21 @@ class AzureDevOpsClient( OAuthHTTPClient ):
                 deserialized report object if successful, or None if the report is not
                 ready yet
         """
-        query_params = { "api-version": "7.2-preview.1"}
-        r = raw_response = self._send_request( url=report_url,
-                                          query_parameters=query_params )
-        status = r.status_code
+        result = (
+            self.call()
+            .url(report_url)
+            .api_version("7.2-preview.1")
+            .expect(200, 404)
+            .get()
+        )
+        status = result.response.status_code
         if status == 404:
-            error_type = r.json()["typeKey"]
+            error_type = result.json().get("typeKey")
             if error_type == "PermissionsReportDownloadNotAvailableException":
                 logging.warning( "Permissions report is not ready for download" )
                 return None
-            else:
-                logging.error( "ERROR while downloading permissions report" )
-                logging.error( raw_response.json() )
-                raise Exception("Could not download permissions report")
-        elif status != 200:
-            logging.error( "ERROR while downloading permissions report" )
-            logging.error( raw_response.json() )
-            raise Exception("Could not download permissions report")
-        
-        return r.json()
+            raise exception_from_response(result.response)
+        return result.json()
 
     def create_permission_report( self, org_name, resource_id, resource_type ):
         """
@@ -382,7 +390,6 @@ class AzureDevOpsClient( OAuthHTTPClient ):
             Returns:
                 A URL to download the permissions report
         """
-        query_params = { "api-version": "7.2-preview.1"}
         body = {
             "descriptors": [],
             "reportName": str(datetime.now().isoformat()),
@@ -393,13 +400,14 @@ class AzureDevOpsClient( OAuthHTTPClient ):
                 }
             ]
         }
-        raw_response = self._send_request( f"/{org_name}/_apis/permissionsreport", 
-                                          method="POST", json=body, query_parameters=query_params )
-        if raw_response.status_code != 202:
-            logging.error( "ERROR while creating devops permissions report" )
-            logging.error( raw_response.json() )
-            raise Exception("Could not create devops permissions report")
-        return raw_response.json()["_downloadLink"]["href"]
+        return (
+            self.call(f"/{org_name}/_apis/permissionsreport")
+            .api_version("7.2-preview.1")
+            .body(body)
+            .expect(202)
+            .post()
+            .json()["_downloadLink"]["href"]
+        )
 
 
     def get_service_connections( self, org_name, project_name ):
@@ -414,13 +422,12 @@ class AzureDevOpsClient( OAuthHTTPClient ):
             Returns:
                 A list of service connection objects
         """
-        query_params = { "api-version": "7.2-preview.4"}
-        raw_response = self._send_request( f"/{org_name}/{project_name}/_apis/serviceendpoint/endpoints", query_parameters=query_params )
-        if raw_response.status_code != 200:
-            logging.error( "ERROR while getting devops project service connections" )
-            logging.error( raw_response.json() )
-            raise Exception("Could not fetch service connections for project")
-        return raw_response.json()["value"]
+        return (
+            self.call(f"/{org_name}/{project_name}/_apis/serviceendpoint/endpoints")
+            .api_version("7.2-preview.4")
+            .get()
+            .values()
+        )
 
     def get_all_service_connections( self, org_name ):
         """
@@ -452,14 +459,12 @@ class AzureDevOpsClient( OAuthHTTPClient ):
             Returns:
                 A list of projects
         """
-        query_params = { "api-version": "7.2-preview.4"}
-        raw_response = self._send_request( f"/{org_name}/_apis/projects", query_parameters=query_params )
-
-        if raw_response.status_code != 200:
-            logging.error( "ERROR while getting devops projects" )
-            logging.error( raw_response.json())
-            raise Exception("Could not fetch Azure DevOps Projects")
-        return raw_response.json()["value"]
+        return (
+            self.call(f"/{org_name}/_apis/projects")
+            .api_version("7.2-preview.4")
+            .get()
+            .values()
+        )
 
     def get_connection_data( self, org_name ):
         """
@@ -471,14 +476,12 @@ class AzureDevOpsClient( OAuthHTTPClient ):
             Returns:
                 an object containing user information
         """
-        query_params = { "api-version": "7.2-preview.1"}
-        raw_response = self._send_request(f"/{org_name}/_apis/connectionData",
-                                          method="GET", query_parameters=query_params)
-        if raw_response.status_code != 200:
-            logging.error( "ERROR while getting logged in users connection data" )
-            logging.error( raw_response.content)
-            raise Exception("Could not get logged in user connection data from devops API")
-        return raw_response.json()
+        return (
+            self.call(f"/{org_name}/_apis/connectionData")
+            .api_version("7.2-preview.1")
+            .get()
+            .json()
+        )
 
     def get_self(self):
         """
@@ -487,14 +490,13 @@ class AzureDevOpsClient( OAuthHTTPClient ):
             Returns:
                 an object containing user information
         """
-        query_params = { "api-version": "7.2-preview.1"}
-        raw_response = self._send_request(url="https://aex.dev.azure.com/_apis/User/User",
-                                          method="GET", query_parameters=query_params)
-        if raw_response.status_code != 200:
-            logging.error( "ERROR while getting logged in user" )
-            logging.error( raw_response.json())
-            raise Exception("Could not get logged in user from devops API")
-        return raw_response.json()
+        return (
+            self.call()
+            .url("https://aex.dev.azure.com/_apis/User/User")
+            .api_version("7.2-preview.1")
+            .get()
+            .json()
+        )
     
     def get_profile(self):
         """
@@ -503,14 +505,13 @@ class AzureDevOpsClient( OAuthHTTPClient ):
             Returns:
                 a list of profile objects
         """
-        query_params = { "api-version": "7.2-preview.1"}
-        raw_response = self._send_request(url="https://app.vssps.visualstudio.com/_apis/profile/profiles/me",
-                                          method="GET", query_parameters=query_params)
-        if raw_response.status_code != 200:
-            logging.error( "ERROR while getting logged in users profiles" )
-            logging.error( raw_response.json())
-            raise Exception("Could not get logged in users profiles from devops API")
-        return raw_response.json()
+        return (
+            self.call()
+            .url("https://app.vssps.visualstudio.com/_apis/profile/profiles/me")
+            .api_version("7.2-preview.1")
+            .get()
+            .json()
+        )
 
 
     def get_organizations(self):
@@ -524,12 +525,11 @@ class AzureDevOpsClient( OAuthHTTPClient ):
         """
         profile_data = self.get_profile()
 
-        query_params = { "api-version": "7.2-preview.1", "memberId": profile_data["id"]}
-        raw_response = self._send_request( url=f"https://app.vssps.visualstudio.com/_apis/accounts",
-                                          query_parameters=query_params )
-
-        if raw_response.status_code != 200:
-            logging.error( "ERROR while getting devops organizations" )
-            logging.error( raw_response.json())
-            raise Exception("Could not fetch Azure DevOps organizations")
-        return raw_response.json()["value"]
+        return (
+            self.call()
+            .url("https://app.vssps.visualstudio.com/_apis/accounts")
+            .api_version("7.2-preview.1")
+            .param("memberId", profile_data["id"])
+            .get()
+            .values()
+        )
