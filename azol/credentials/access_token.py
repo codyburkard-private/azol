@@ -10,7 +10,7 @@ class AccessToken( EntraIdCredential ):
     supportedOAuthFlows = [ "raw_token" ]
     credentialType="unknown"
     default_oauth_flow="raw_token"
-    def __init__( self, token, *args, **kwargs ):
+    def __init__( self, token: str, *args, **kwargs ):
         super().__init__( *args, **kwargs)
         self.token = token
         _, body, _ = parse_jwt(token)

@@ -1,4 +1,5 @@
 """A module containing the Application Object credential class"""
+from typing import Any
 from azol.credentials.entraid_credential import EntraIdCredential
 from azol.constants import OAUTHFLOWS
 
@@ -12,12 +13,12 @@ class ApplicationObject( EntraIdCredential ):
     credentialType="app"
     default_oauth_flow=OAUTHFLOWS.CLIENT_CREDENTIALS
 
-    def __init__( self, client_id, client_secret, *args, **kwargs ):
+    def __init__( self, client_id: str, client_secret: str, *args, **kwargs ):
         super().__init__( *args, **kwargs)
         self._client_id = client_id
         self._client_secret = client_secret
 
-    def get_client_secret( self ):
+    def get_client_secret( self ) -> list[Any]:
         """Get the client secret that is saved in this credential class
 
             Returns: A string containing the client secret

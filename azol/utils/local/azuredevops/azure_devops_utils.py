@@ -1,5 +1,6 @@
 """Module containing utilities for working with Azure DevOps Agents. For use in Azure Devops pipeline tasks."""
 
+from typing import Any
 import os
 from azol.utils.local.windows import decrypt_dpapi
 import json
@@ -7,7 +8,7 @@ from azol.models.devops_rsa_parameters import DevOpsRSAParameters
 import base64
 import re
 
-def is_self_hosted():
+def is_self_hosted() -> bool:
     '''
         For use in Azure Devops pipeline tasks.
 
@@ -20,7 +21,7 @@ def is_self_hosted():
         return True
     return None
 
-def get_agent_home_directory():
+def get_agent_home_directory() -> list[Any]:
     '''
         For use in Azure Devops pipeline tasks.
 
@@ -28,7 +29,7 @@ def get_agent_home_directory():
     '''
     return os.getenv("AGENT_HOMEDIRECTORY")
 
-def is_windows():
+def is_windows() -> bool:
     '''
         For use in Azure Devops pipeline tasks.
 
@@ -39,7 +40,7 @@ def is_windows():
     else:
         return False
 
-def get_rsa_credentials_file():
+def get_rsa_credentials_file() -> list[Any]:
     '''
         For use in Azure Devops pipeline tasks.
 
@@ -66,7 +67,7 @@ def get_rsa_credentials_file():
     else:
         raise Exception("Microsoft hosted agents do not have a .credentuals_rsaparams file")
 
-def load_rsa_credentials(credentials_dict):
+def load_rsa_credentials(credentials_dict) -> Any:
     '''
         For use in Azure Devops pipeline tasks.
 
@@ -108,7 +109,7 @@ def load_rsa_credentials(credentials_dict):
     return rsa_parameters
 
 
-def get_agent_id():
+def get_agent_id() -> list[Any]:
     '''
         For use in Azure Devops pipeline tasks.
 
@@ -121,7 +122,7 @@ def get_agent_id():
     return os.getenv("AGENT_ID")
 
 
-def get_agent_file():
+def get_agent_file() -> list[Any]:
     '''
         For use in Azure Devops pipeline tasks.
 
@@ -137,7 +138,7 @@ def get_agent_file():
     f.close()
     return agent_data
 
-def get_credentials_file():
+def get_credentials_file() -> list[Any]:
     '''
         For use in Azure Devops pipeline tasks.
 
@@ -153,7 +154,7 @@ def get_credentials_file():
     f.close()
     return agent_data
 
-def get_latest_session_id():
+def get_latest_session_id() -> list[Any]:
     '''
         For use in Azure Devops pipeline tasks.
 

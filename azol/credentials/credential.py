@@ -1,4 +1,5 @@
 """A module containing the parent credential class"""
+from typing import Any
 import uuid
 
 class Credential:
@@ -8,13 +9,13 @@ class Credential:
 
     credentialType=None
     
-    def __init__( self, azol_id=None ):
+    def __init__( self, azol_id: str | None=None ):
 
         if azol_id is None:
             azol_id = uuid.uuid4()
         self._id = str(azol_id)
 
-    def get_id( self ):
+    def get_id( self ) -> list[Any]:
         """
             Get the azol id of the object.
     

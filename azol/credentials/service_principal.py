@@ -1,4 +1,5 @@
 """A module containing the Service Principal credential class"""
+from typing import Any
 from azol.credentials.entraid_credential import EntraIdCredential
 from azol.constants import OAUTHFLOWS
 from cryptography.hazmat.primitives.serialization import pkcs12
@@ -12,8 +13,8 @@ class ServicePrincipal( EntraIdCredential ):
     supportedOAuthFlows = [ OAUTHFLOWS.CLIENT_CREDENTIALS ]
     credentialType="app"
     default_oauth_flow=OAUTHFLOWS.CLIENT_CREDENTIALS
-    def __init__( self, client_id, client_secret=None, pfx_path=None, b64_cert=None,
-                  cert_password=None, *args, **kwargs ):
+    def __init__( self, client_id: str, client_secret: str | None=None, pfx_path: str | None=None, b64_cert: str | None=None,
+                  cert_password: str | None=None, *args, **kwargs ):
         super().__init__( *args, **kwargs)
         if not client_secret and not pfx_path and not b64_cert:
             raise Exception("No secret added for the service principal.")
@@ -37,14 +38,14 @@ class ServicePrincipal( EntraIdCredential ):
         self._client_secret = client_secret
         self._cert_password=cert_password
 
-    def get_credential_type( self ):
+    def get_credential_type( self ) -> list[Any]:
         """
             Returns: string - secret or x509, depending on what type of secret was defined for
                      the service principal
         """
         return self._credential_type
 
-    def get_certificate( self ):
+    def get_certificate( self ) -> list[Any]:
         """
             Get the certificate being used by this credential object.
 
@@ -52,7 +53,7 @@ class ServicePrincipal( EntraIdCredential ):
         """
         return self._cert
 
-    def get_client_secret( self ):
+    def get_client_secret( self ) -> list[Any]:
         """
             Get the client secret being used by this credential object.
 

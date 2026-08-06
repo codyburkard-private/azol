@@ -1,4 +1,5 @@
 """A module containing the parent class for an EntraID Credential"""
+from typing import Any
 from azol.credentials.credential import Credential
 
 class EntraIdCredential( Credential ):
@@ -14,7 +15,7 @@ class EntraIdCredential( Credential ):
         self._username=None
         super().__init__( *args, **kwargs)
 
-    def get_default_oauth_flow( self ):
+    def get_default_oauth_flow( self ) -> list[Any]:
         """
             Get the default oauth flow for the credential type.
             This oauth flow is one of the following:
@@ -30,7 +31,7 @@ class EntraIdCredential( Credential ):
         """
         return self.default_oauth_flow
 
-    def get_client_id( self ):
+    def get_client_id( self ) -> list[Any]:
         """
             Get the current client id set in the credential.
     
@@ -38,7 +39,7 @@ class EntraIdCredential( Credential ):
         """
         return self._client_id
 
-    def has_ests(self):
+    def has_ests(self) -> Any:
         """
             Determine if the credential was initialized with an ESTS cookie. Return False by default.
 
@@ -48,7 +49,7 @@ class EntraIdCredential( Credential ):
         """
         return False
 
-    def get_username( self ):
+    def get_username( self ) -> list[Any]:
         """
             Get the username of the user object
 
@@ -58,7 +59,7 @@ class EntraIdCredential( Credential ):
             return self._username
         return None
     
-    def has_refresh_token(self):
+    def has_refresh_token(self) -> Any:
         """
             Check if a user credential object has a refresh token saved.
         

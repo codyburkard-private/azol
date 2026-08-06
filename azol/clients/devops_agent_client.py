@@ -1,4 +1,5 @@
 """A module containing azure devops agent http client"""
+from typing import Any
 import logging
 from azol.constants import  OAuthResourceIDs
 import time
@@ -141,8 +142,8 @@ class AzureDevOpsAgentClient( object ):
         An HTTP client for spoofing a devOps Agent
     """
 
-    def __init__( self, agent_credentials, devops_org_name, agent_id,
-                  pool_id, agent_client_id, *args, **kwargs ):
+    def __init__( self, agent_credentials, devops_org_name: str, agent_id: str,
+                  pool_id: str, agent_client_id: str, *args, **kwargs ):
         
         # If no arguments are supplied, assume the code is running on a devops agent.
         self.devops_org_name = devops_org_name
@@ -162,7 +163,7 @@ class AzureDevOpsAgentClient( object ):
         
         self._agent_private_key = private_numbers.private_key(backend=default_backend())
 
-    def fetch_token(self):
+    def fetch_token(self) -> Any:
         assertion = self._generate_assertion()
         body={
             "grant_type": "client_credentials",
@@ -219,7 +220,7 @@ class AzureDevOpsAgentClient( object ):
         assertion  = b64_header_body + "." + signature
         return assertion
     
-    def kill_session(self, session_id=None):
+    def kill_session(self, session_id: str | None=None) -> Any:
         '''
             Kill an existing session for this agent
 
@@ -250,7 +251,7 @@ class AzureDevOpsAgentClient( object ):
 
         logging.info(f"Session {session_id} ended ")
     
-    def create_session(self):
+    def create_session(self) -> dict[str, Any]:
         self.fetch_token()
         headers = {
             "Authorization": f"Bearer {self._current_token}",
@@ -286,7 +287,7 @@ class AzureDevOpsAgentClient( object ):
         self._session_key = algorithms.AES(aes_key)
         logging.info(f"Session Created with ID {self.session_id}")
 
-    def poll(self, message_callback=None, max_messages=1, max_time=None):
+    def poll(self, message_callback: Any=None, max_messages: int=1, max_time: int=None) -> Any:
         '''
             Poll the devOps pool for new messages.
 

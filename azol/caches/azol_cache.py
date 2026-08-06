@@ -1,4 +1,5 @@
 """Module containing a parent class for an azol cache object"""
+from typing import Any
 import logging
 from azol.constants import DEFAULTSCOPE
 from azol.utils import parse_jwt
@@ -10,8 +11,8 @@ class AzolCache:
         self.tokens={}
 
 
-    def try_get_token(self, tenant_id, client_id, default_scope, scopes,
-                      oauth_resource, username=None):
+    def try_get_token(self, tenant_id: str, client_id: str, default_scope, scopes: Any,
+                      oauth_resource: str, username: str | None=None) -> Any:
         """
             Attempt to get a token from the cache that matches the requested tenant_id,
             client_id, scope, and user.
@@ -61,9 +62,9 @@ class AzolCache:
             if token_found:
                 return token_data
 
-    def cache_or_update(self, access_token, tenant_id, client_id, default_scope, scopes,
-                        oauth_resource, refresh_token=None, username=None, 
-                        ests_cookie=None, ests_persistent_cookie=None):
+    def cache_or_update(self, access_token, tenant_id: str, client_id: str, default_scope, scopes: Any,
+                        oauth_resource: str, refresh_token: Any | None=None, username: str | None=None, 
+                        ests_cookie: Any | None=None, ests_persistent_cookie: Any | None=None) -> Any:
         """
             Saves an access and refresh token to the cache, or updates an existing entry
 

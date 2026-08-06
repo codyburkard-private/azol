@@ -1,4 +1,5 @@
 """A module containing the Service Principal credential class"""
+from typing import Any
 from azol.credentials.entraid_credential import EntraIdCredential
 from azol.constants import OAUTHFLOWS
 from cryptography.hazmat.primitives.serialization import pkcs12
@@ -54,20 +55,20 @@ class ADOWorkloadFederationCredential( EntraIdCredential ):
     supportedOAuthFlows = [ OAUTHFLOWS.CLIENT_CREDENTIALS ]
     credentialType="app"
     default_oauth_flow=OAUTHFLOWS.CLIENT_CREDENTIALS
-    def __init__( self, client_id, service_endpoint_id, *args, **kwargs ):
+    def __init__( self, client_id: str, service_endpoint_id: str, *args, **kwargs ):
         super().__init__( *args, **kwargs)
         self._client_id=client_id
         self._credential_type="ado_oidc"
         self._service_endpoint_id = service_endpoint_id
 
-    def get_credential_type( self ):
+    def get_credential_type( self ) -> list[Any]:
         """
             Returns: string - secret or x509, depending on what type of secret was defined for
                      the service principal
         """
         return self._credential_type
 
-    def get_service_endpoint( self ):
+    def get_service_endpoint( self ) -> list[Any]:
         """
             Get the service endpoint id used for this cert
 
@@ -75,7 +76,7 @@ class ADOWorkloadFederationCredential( EntraIdCredential ):
         """
         return self._service_endpoint_id
 
-    def get_system_access_token( self, var_name="SYSTEM_ACCESSTOKEN" ):
+    def get_system_access_token( self, var_name: str="SYSTEM_ACCESSTOKEN" ) -> list[Any]:
         """
             Get the system access token for the workload federation credential. 
 
@@ -105,7 +106,7 @@ class ADOWorkloadFederationCredential( EntraIdCredential ):
 
         return system_access_token
 
-    def get_oidc_url( self ):
+    def get_oidc_url( self ) -> list[Any]:
         """
             Gets the OIDC url from the azure devops execution environment. This
             is saved in an environment variable

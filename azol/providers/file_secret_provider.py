@@ -1,4 +1,5 @@
 """A module containing a local file secret provider"""
+from typing import Any
 import uuid
 from pathlib import Path
 import json
@@ -9,7 +10,7 @@ class FileSecretProvider( object ):
         A local file secret provider for the azol token service
     """
 
-    def __init__( self, file=None, directory=AZOLSECRETPROVIDERFOLDER ):
+    def __init__( self, file: Any | None=None, directory: str=AZOLSECRETPROVIDERFOLDER ):
 
         if file is None:
             file = uuid.uuid4()
@@ -17,7 +18,7 @@ class FileSecretProvider( object ):
         self.file_path=directory + "/" + self.file
         Path(directory).mkdir(parents=True, exist_ok=True)
 
-    def get_secret( self, secret_reference ):
+    def get_secret( self, secret_reference: str ) -> list[Any]:
         """
             Get a secret value based on its reference name
 

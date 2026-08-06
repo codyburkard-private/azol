@@ -1,4 +1,5 @@
 """A module containing a key vault secret provider"""
+from typing import Any
 import uuid
 from azol.clients.key_vault_client import KeyVaultClient
 from azol.credentials.user import User
@@ -8,8 +9,8 @@ class KeyVaultProvider:
         A Key Vault secret provider for the azol token service
     """
 
-    def __init__( self, username, key_vault_name, tenant_id, client_id=None, azol_id=None,
-                  credential=None, cache_refresh_token=True ):
+    def __init__( self, username: str, key_vault_name: str, tenant_id: str, client_id: str | None=None, azol_id: str | None=None,
+                  credential: Any | None=None, cache_refresh_token=True ):
         self.key_vault_name = key_vault_name
         self.client_id=client_id
         self.tenant_id=tenant_id
@@ -25,7 +26,7 @@ class KeyVaultProvider:
                                        tenant=tenant_id, oauth_flow="device_code",
                                        use_persistent_cache=cache_refresh_token )
 
-    def get_id( self ):
+    def get_id( self ) -> list[Any]:
         """
             Get the azol id of the provider
 
@@ -34,7 +35,7 @@ class KeyVaultProvider:
         """
         return self._id
 
-    def get_secret( self, secret_reference ):
+    def get_secret( self, secret_reference: str ) -> list[Any]:
         """
             Get a secret using the provider
 
