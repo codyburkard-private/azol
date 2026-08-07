@@ -12,7 +12,7 @@ from azol.http.errors import (
     AzolThrottledError,
     exception_from_response,
 )
-from azol.http.request import HTTPRequest, OAuthHTTPRequest
+from azol.http.request import HTTPRequest, OAuthHTTPRequest, suppress_http_error_logging
 from azol.http.request_builder import HTTPRequestBuilder, OAuthRequestBuilder
 from azol.http.result import HttpResult
 from azol.http.session import DEFAULT_TIMEOUT, create_session
@@ -30,6 +30,7 @@ __all__ = [
     "exception_from_response",
     "HTTPRequest",
     "OAuthHTTPRequest",
+    "suppress_http_error_logging",
     "HTTPRequestBuilder",
     "OAuthRequestBuilder",
     "HttpCall",

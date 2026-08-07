@@ -1,9 +1,11 @@
 """Prepared HTTP request objects produced by builders."""
 from __future__ import annotations
 
+import contextvars
 import logging
+from contextlib import contextmanager
 from dataclasses import dataclass, field
-from typing import Any, Callable, Mapping, Optional, Set, Union
+from typing import Any, Callable, Iterator, Mapping, Optional, Set, Union
 
 import requests
 
@@ -11,6 +13,22 @@ from azol.http.errors import exception_from_response
 from azol.http.session import DEFAULT_TIMEOUT
 
 logger = logging.getLogger(__name__)
+
+# When set, failed requests still raise but log at DEBUG (for expected retries).
+_suppress_http_error_log: contextvars.ContextVar[bool] = contextvars.ContextVar(
+    "azol_suppress_http_error_log",
+    default=False,
+)
+
+
+@contextmanager
+def suppress_http_error_logging() -> Iterator[None]:
+    """Omit ERROR logs for failed HTTP calls (exceptions are still raised)."""
+    token = _suppress_http_error_log.set(True)
+    try:
+        yield
+    finally:
+        _suppress_http_error_log.reset(token)
 
 
 @dataclass(frozen=True)
@@ -63,7 +81,8 @@ class HTTPRequest:
         error = exception_from_response(
             response, exception_cls=self.exception_cls
         )
-        logger.error(
+        log = logger.debug if _suppress_http_error_log.get() else logger.error
+        log(
             "HTTP request failed: %s %s -> %s. Body: %s",
             self.method,
             self.url,

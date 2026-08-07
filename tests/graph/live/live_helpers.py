@@ -2,8 +2,10 @@
 from __future__ import annotations
 
 import os
+import time
 import unittest
-from typing import Any
+from collections.abc import Callable
+from typing import Any, TypeVar
 
 from azol.clients import GraphClient
 from azol.credentials import AccessToken
@@ -11,6 +13,8 @@ from azol.credentials import AccessToken
 from graph.live.harness.az_auth import AzCliError, assert_logged_in_for_tenant, get_graph_access_token
 from graph.live.harness.config import DEFAULT_TENANT, load_config
 from graph.live.harness.manifest import load_manifest, require_state
+
+T = TypeVar("T")
 
 
 class LiveSetupError(RuntimeError):
@@ -79,6 +83,28 @@ def require_manifest_state(test: unittest.TestCase, name: str) -> dict[str, Any]
         test.skipTest(
             f"state {name!r} missing; run: python -m graph.live.harness.cli ensure"
         )
+
+
+def eventually(
+    probe: Callable[[], T | None | bool],
+    *,
+    attempts: int = 15,
+    sleep_s: float = 2.0,
+    label: str = "condition",
+) -> T | bool | None:
+    """Retry a probe until it returns a truthy value (Entra list/index lag)."""
+    last: T | bool | None = None
+    for attempt in range(1, attempts + 1):
+        last = probe()
+        if last:
+            return last
+        if attempt < attempts:
+            print(
+                f"  waiting for {label} "
+                f"(attempt {attempt}/{attempts}); retrying..."
+            )
+            time.sleep(sleep_s)
+    return last
 
 
 def skip_unavailable_graph(test: unittest.TestCase, exc: BaseException) -> None:

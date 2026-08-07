@@ -11,6 +11,7 @@ from azol.clients.oauth_http_client import OAuthHTTPClient
 from azol.clients.odata import GraphCall
 from azol.constants import GRAPHBETAURL, OAuthResourceIDs, appPermissionNameMap, roleNameMap
 from azol.http.errors import AzolHTTPError
+from azol.http.request import suppress_http_error_logging
 
 SelectArg = Optional[Union[Sequence[str], Iterable[str]]]
 
@@ -1187,7 +1188,8 @@ class GraphClient(OAuthHTTPClient):
             .expand("federatedIdentityCredentials")
             .select("federatedIdentityCredentials", "id", "appId", "displayName")
             .filter("not(federatedIdentityCredentials/$count eq 0)")
-            .header("ConsistencyLevel", "eventual")
+            # $count in $filter requires $count=true + ConsistencyLevel: eventual
+            .count(True)
             .get()
             .values()
         )
@@ -1206,7 +1208,8 @@ class GraphClient(OAuthHTTPClient):
             .expand("federatedIdentityCredentials")
             .select("federatedIdentityCredentials", "id", "appId", "displayName")
             .filter("not(federatedIdentityCredentials/$count eq 0)")
-            .header("ConsistencyLevel", "eventual")
+            # $count in $filter requires $count=true + ConsistencyLevel: eventual
+            .count(True)
             .get()
             .values()
         )
@@ -1235,54 +1238,68 @@ class GraphClient(OAuthHTTPClient):
         # Directory replication can lag; SP create may fail with NoBackingApplicationObject.
         sp = None
         last_error: Exception | None = None
-        for attempt in range(1, 9):
-            try:
-                sp = (
-                    self.call("/servicePrincipals")
-                    .body({"appId": app_id})
-                    .expect(201)
-                    .post()
-                    .json()
-                )
-                break
-            except AzolHTTPError as exc:
-                last_error = exc
-                detail = f"{exc}\n{getattr(exc, 'body_snippet', '') or ''}"
-                retryable = (
-                    "NoBackingApplicationObject" in detail
-                    or "does not reference a valid application object" in detail
-                )
-                if not retryable or attempt >= 8:
-                    raise
-                time.sleep(2)
+        with suppress_http_error_logging():
+            for attempt in range(1, 9):
+                try:
+                    sp = (
+                        self.call("/servicePrincipals")
+                        .body({"appId": app_id})
+                        .expect(201)
+                        .post()
+                        .json()
+                    )
+                    break
+                except AzolHTTPError as exc:
+                    last_error = exc
+                    detail = f"{exc}\n{getattr(exc, 'body_snippet', '') or ''}"
+                    retryable = (
+                        "NoBackingApplicationObject" in detail
+                        or "does not reference a valid application object" in detail
+                    )
+                    if not retryable or attempt >= 8:
+                        raise
+                    print(
+                        f"  directory not ready for service principal create "
+                        f"(attempt {attempt}/8); retrying..."
+                    )
+                    time.sleep(2)
         if not isinstance(sp, dict) or "id" not in sp:
             raise last_error or AzolHTTPError(
                 f"failed to create service principal for application {app_id}"
             )
         sp_id = sp["id"]
         # Wait until the SP is readable before addPassword (same replication lag).
-        for attempt in range(1, 9):
-            try:
-                self.call(f"/servicePrincipals/{sp_id}").get()
-                break
-            except AzolHTTPError as exc:
-                if getattr(exc, "status_code", None) != 404 or attempt >= 8:
-                    raise
-                time.sleep(2)
-        secret = None
-        for attempt in range(1, 9):
-            try:
-                secret = (
-                    self.call(f"/servicePrincipals/{sp_id}/addPassword")
-                    .body({"passwordCredential": {"displayName": "inconspicuous"}})
-                    .post()
-                    .json()
-                )["secretText"]
-                break
-            except AzolHTTPError as exc:
-                if getattr(exc, "status_code", None) != 404 or attempt >= 8:
-                    raise
-                time.sleep(2)
+        with suppress_http_error_logging():
+            for attempt in range(1, 9):
+                try:
+                    self.call(f"/servicePrincipals/{sp_id}").get()
+                    break
+                except AzolHTTPError as exc:
+                    if getattr(exc, "status_code", None) != 404 or attempt >= 8:
+                        raise
+                    print(
+                        f"  waiting for service principal to become readable "
+                        f"(attempt {attempt}/8); retrying..."
+                    )
+                    time.sleep(2)
+            secret = None
+            for attempt in range(1, 9):
+                try:
+                    secret = (
+                        self.call(f"/servicePrincipals/{sp_id}/addPassword")
+                        .body({"passwordCredential": {"displayName": "inconspicuous"}})
+                        .post()
+                        .json()
+                    )["secretText"]
+                    break
+                except AzolHTTPError as exc:
+                    if getattr(exc, "status_code", None) != 404 or attempt >= 8:
+                        raise
+                    print(
+                        f"  waiting to add service principal password "
+                        f"(attempt {attempt}/8); retrying..."
+                    )
+                    time.sleep(2)
         return {
             "clientId": app_id,
             "appObjectId": app_object_id,

@@ -62,6 +62,10 @@ def with_consistency_retry(
                 raise AzCliError(
                     f"{label} failed after {attempt} attempt(s): {exc}"
                 ) from exc
+            print(
+                f"  directory not ready for {label} "
+                f"(attempt {attempt}/{attempts}); retrying..."
+            )
             time.sleep(sleep_s)
     raise AzCliError(f"{label} failed after {attempts} attempts: {last_error}")
 
@@ -237,6 +241,10 @@ def wait_until_readable(
                 return alt
         last_detail = f"GET {path} not found"
         if attempt < attempts:
+            print(
+                f"  waiting for {label} to become readable "
+                f"(attempt {attempt}/{attempts}); retrying..."
+            )
             time.sleep(sleep_s)
     raise AzCliError(f"{label} not readable after {attempts} attempt(s): {last_detail}")
 
@@ -325,10 +333,10 @@ def _create_live_application(display_name: str) -> dict[str, Any]:
                 fallback=lambda: find_live_by_display_name("applications", display_name),
                 attempts=_CONSISTENCY_ATTEMPTS,
             )
-        except AzCliError as exc:
+        except AzCliError:
             print(
-                f"  application id={app_object_id} still not readable "
-                f"({exc}); retrying create..."
+                f"  application id={app_object_id} still not readable; "
+                f"retrying create (round {round_idx}/{_CREATE_ROUNDS})..."
             )
             continue
     raise AzCliError(

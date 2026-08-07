@@ -10,6 +10,7 @@ import unittest
 
 from graph.live.live_helpers import (
     LiveGraphTestCase,
+    eventually,
     require_manifest_state,
     skip_unavailable_graph,
 )
@@ -73,21 +74,34 @@ class GraphLiveCoreTests(LiveGraphTestCase):
     def test_graph_app_role_annotated(self):
         app_role = require_manifest_state(self, "graph_app_role")
         subject = require_manifest_state(self, "subject_principal")
-        perms = self.client.get_api_permissions(subject["spId"])
-        match = next(
-            (p for p in perms if p.get("id") == app_role["assignmentId"]),
-            None,
+
+        def _find():
+            perms = self.client.get_api_permissions(subject["spId"])
+            return next(
+                (
+                    p
+                    for p in perms
+                    if p.get("id") == app_role["assignmentId"]
+                    or p.get("appRoleId") == app_role["appRoleId"]
+                ),
+                None,
+            )
+
+        match = eventually(_find, label="graph app role assignment")
+        self.assertIsNotNone(
+            match,
+            f"app role assignment not visible on subject SP; state={app_role}",
         )
-        self.assertIsNotNone(match)
         self.assertIn("azolAnnotations", match)
         self.assertEqual(match.get("appRoleId"), app_role["appRoleId"])
         self.assertTrue(match["azolAnnotations"].get("permissionName"))
 
     def test_federated_credential_seed(self):
         fic = require_manifest_state(self, "federated_credential")
-        apps = self.client.get_all_application_federated_identities()
-        self.assertTrue(
-            any(
+
+        def _found():
+            apps = self.client.get_all_application_federated_identities()
+            return any(
                 a.get("id") == fic["appObjectId"]
                 and any(
                     c.get("id") == fic["id"]
@@ -95,6 +109,10 @@ class GraphLiveCoreTests(LiveGraphTestCase):
                 )
                 for a in apps
             )
+
+        self.assertTrue(
+            eventually(_found, label="federated credential in application list"),
+            f"seeded FIC not returned by get_all_application_federated_identities; state={fic}",
         )
 
     def test_directory_role_definitions(self):

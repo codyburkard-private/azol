@@ -263,13 +263,16 @@ class GraphClientContractTests(unittest.TestCase):
         self.client.get_all_application_federated_identities()
         headers = self.session.request.call_args.kwargs.get("headers") or {}
         self.assertEqual(headers.get("ConsistencyLevel"), "eventual")
+        params = last_params(self.session)
+        self.assertEqual(params.get("$count"), "true")
         self.assertIn(
             "not(federatedIdentityCredentials/$count eq 0)",
-            last_params(self.session)["$filter"],
+            params["$filter"],
         )
         self.client.get_all_service_principal_federated_identities()
         headers = self.session.request.call_args.kwargs.get("headers") or {}
         self.assertEqual(headers.get("ConsistencyLevel"), "eventual")
+        self.assertEqual(last_params(self.session).get("$count"), "true")
 
     def test_app_and_sp_owner_mutations(self):
         self.session.request.return_value = mock_response(status_code=204, payload=None)
@@ -294,6 +297,7 @@ class GraphClientContractTests(unittest.TestCase):
         self.session.request.side_effect = [
             mock_response(status_code=201, payload={"id": "app-obj", "appId": "app-id"}),
             mock_response(status_code=201, payload={"id": "sp-id"}),
+            mock_response(payload={"id": "sp-id"}),  # wait-until-readable GET
             mock_response(payload={"secretText": "secret"}),
         ]
         out = self.client.create_new_local_service_principal("azol-live-test")
@@ -306,7 +310,7 @@ class GraphClientContractTests(unittest.TestCase):
                 "spSecret": "secret",
             },
         )
-        self.assertEqual(self.session.request.call_count, 3)
+        self.assertEqual(self.session.request.call_count, 4)
 
         self.session.request.side_effect = None
         self._set_payload({"id": "sp2"}, status_code=201)
