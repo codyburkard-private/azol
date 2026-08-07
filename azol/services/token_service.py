@@ -2,6 +2,7 @@
     Module containing the token service, which is used for fetching tokens
     for the azol entra ID OAuth clients
 """
+from typing import Any
 import logging
 import uuid
 import json
@@ -25,8 +26,9 @@ from datetime import datetime, timedelta
 from importlib import import_module
 
 from .token_service_helpers import build_scope_string, auth_code_flow, ests_login_flow
+from azol.http import AzolHTTPError
 
-class IdentityPlatformRequestFailedException(Exception):
+class IdentityPlatformRequestFailedException(AzolHTTPError):
     """
         Exception that is raised when requests to the identity platform
         unexpectedly fail
@@ -37,13 +39,13 @@ class TokenService( object ):
         Generic OAuth2 token service for Entra ID
     """
 
-    def __init__( self, cred, tenant_id, oauth_flow,
-                  secrets_provider, use_token_broker,
-                  use_persistent_cache, oauth_resource,
-                  scopes, default_scope, profile_scope, openid_scope,
+    def __init__( self, cred: Any, tenant_id: str, oauth_flow: str,
+                  secrets_provider: Any, use_token_broker: bool,
+                  use_persistent_cache: bool, oauth_resource: str,
+                  scopes: Any, default_scope, profile_scope, openid_scope,
                   offline_access_scope, 
-                  redirect_uri=None, azol_id=None, 
-                  useragent=UserAgents.Windows_Edge):
+                  redirect_uri: str | None=None, azol_id: str | None=None, 
+                  useragent: str=UserAgents.Windows_Edge):
         self.credential_object=cred
         self.use_token_broker=use_token_broker
         self._redirect_uri=redirect_uri
@@ -121,20 +123,20 @@ class TokenService( object ):
             else:
                 logging.info( "Tried to use a token from the cache but none exists" )
 
-    def set_tenant( self, tenant ):
+    def set_tenant( self, tenant: str ) -> Any:
         self._tenant=tenant
 
-    def set_scope(self, scopes, default, profile, offline_access, openid):
+    def set_scope(self, scopes: Any, default, profile, offline_access, openid) -> Any:
         self.scopes=scopes
         self.default_scope=default
         self.profile_scope=profile
         self.offline_access_scope=offline_access
         self.openid_scope=openid
 
-    def switch_client( self, client_id ):
+    def switch_client( self, client_id: str ) -> Any:
         self._client_id=client_id
 
-    def refresh_token( self ):
+    def refresh_token( self ) -> Any:
         if self.credential_object.credentialType != "user":
             raise Exception("Cannot refresh a token for a non user credential type")
         if self.use_token_broker:
@@ -154,7 +156,7 @@ class TokenService( object ):
                                          username=self.credential_object.get_username() )
         return access_token
 
-    def get_refresh_token_if_exists( self ):
+    def get_refresh_token_if_exists( self ) -> list[Any]:
         """
             Returns the current refresh token saved by the token service
 
@@ -166,7 +168,7 @@ class TokenService( object ):
             return self._refresh_token
         return None
 
-    def get_id( self ):
+    def get_id( self ) -> list[Any]:
         """
             Get the azol Id of the tokenService object
 
@@ -187,7 +189,7 @@ class TokenService( object ):
         """
         self.registered_token_flows[ flow_name ] = flow_function
 
-    def get_cached_token_if_not_expired( self ):
+    def get_cached_token_if_not_expired( self ) -> list[Any]:
         """
             Get a cached token from the token Cache if it exists
 
@@ -207,7 +209,7 @@ class TokenService( object ):
             return None
         return token
 
-    def fetch_token( self, validity=28800 ):
+    def fetch_token( self, validity=28800 ) -> Any:
         """
             Initiates an authorization flow and caches a new token.
 
@@ -273,7 +275,7 @@ class TokenService( object ):
                                             ests_persistent_cookie=ests_persistent_cookie )
         return access_token
 
-    def get_cached_token( self ):
+    def get_cached_token( self ) -> list[Any]:
         """
             Get a cached token from the token Cache if it exists.
             Will also return expired tokens.
@@ -292,7 +294,7 @@ class TokenService( object ):
         token = token_data["access_token"]
         return token
 
-    def get_client_id(self):
+    def get_client_id(self) -> list[Any]:
         return self._client_id
 
     def _raw_token( self ):

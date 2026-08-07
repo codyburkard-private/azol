@@ -1,9 +1,10 @@
+from typing import Any
 import ctypes
 import ctypes.wintypes
 import os
 import json
 
-def decrypt_dpapi(encrypted_data):
+def decrypt_dpapi(encrypted_data) -> Any:
 
     buffer = ctypes.create_string_buffer(len(encrypted_data))
     buffer[:len(encrypted_data)] = encrypted_data
@@ -34,7 +35,7 @@ def decrypt_dpapi(encrypted_data):
     ctypes.windll.kernel32.LocalFree(decrypted_blob.pbData)
     return decrypted_data
 
-def get_azure_cli_credential_file_contents():
+def get_azure_cli_credential_file_contents() -> list[Any]:
     os_name = os.name
     home_directory = os.path.expanduser ("~")
     azure_directory = home_directory + "/.azure"

@@ -5,3 +5,12 @@ __pycache__/
 
 # C extensions
 *.so
+
+# MkDocs (local / generated — do not commit)
+docs/
+site/
+
+.env.live
+.venv/
+*.egg-info/
+

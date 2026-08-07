@@ -8,6 +8,23 @@ Install the library using Python3 pip:
 
 ```pip install azol```
 
+API docs (GraphClient reference) can be built with:
+
+```bash
+pip install -e ".[docs]"
+mkdocs serve
+```
+
+Offline GraphClient tests (from repo root, with the package importable):
+
+```bash
+pip install -e .
+python -m unittest discover -s tests
+python scripts/check_graph_docstrings.py
+```
+
+Live tenant tests are opt-in; see [`tests/graph/live/README.md`](tests/graph/live/README.md).
+
 ## Basic Usage
 
 Log in as a user and get all subscriptions:

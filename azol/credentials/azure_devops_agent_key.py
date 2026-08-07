@@ -1,4 +1,5 @@
 """A module containing the parent credential class"""
+from typing import Any
 import uuid
 from azol.credentials.credential import Credential
 from azol.models import DevOpsRSAParameters
@@ -17,7 +18,7 @@ class DevOpsAgentCredential( Credential ):
 
     credentialType="devops_agent_credential"
 
-    def __init__( self, rsa_parameters_file_path=None, rsa_parameters=None, *args, **kwargs ):
+    def __init__( self, rsa_parameters_file_path: Any | None=None, rsa_parameters: Any | None=None, *args, **kwargs ):
         super().__init__( *args, **kwargs )
 
         if rsa_parameters_file_path:

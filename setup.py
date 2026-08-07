@@ -1,7 +1,6 @@
 from setuptools import setup, find_packages
 import os
 
-version = os.environ.get('BUILD_VERSION')
 
 readmeText=""
 with open("README.md", "r") as f:
@@ -18,7 +17,14 @@ setup(
     long_description_content_type="text/markdown",
     install_requires=[
         "requests==2.31.0",
+        "cryptography==50.0.0",
+        "pymsalruntime==0.20.6; platform_system == 'Windows'",
         "dataclasses==0.6",
-        "cryptography"
-    ]
+    ],
+    extras_require={
+        "docs": [
+            "mkdocs-material>=9.0",
+            "mkdocstrings[python]>=0.24",
+        ],
+    },
 )

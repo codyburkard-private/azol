@@ -1,4 +1,5 @@
 """Module containing a token cache that persists on the local filesystem"""
+from typing import Any
 import json
 import sys
 from pathlib import Path
@@ -16,7 +17,7 @@ class LocalTokenCache( AzolCache ):
         self.file_name=TOKENCACHEDIR+"/default"
         Path(self.file_name).touch(exist_ok=True)
 
-    def try_get_token(self, *args, **kwargs):
+    def try_get_token(self, *args, **kwargs) -> Any:
         """
             Attempt to get a token from the cache that matches the requested tenantId,
             clientId, scope, and user.
@@ -32,7 +33,7 @@ class LocalTokenCache( AzolCache ):
 
         return super().try_get_token(*args, **kwargs)
 
-    def cache_or_update(self, *args, **kwargs):
+    def cache_or_update(self, *args, **kwargs) -> Any:
         """
             Saves an access and refresh token to the cache, or updates an existing entry.
             Overwrites the existing local cache file
