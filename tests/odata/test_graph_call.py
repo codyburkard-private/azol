@@ -92,8 +92,12 @@ class GraphCallTests(unittest.TestCase):
         GraphCall(self.client, "/x").body({"a": 2}).patch()
         self.assertEqual(self.client._session.request.call_args.args[0], "PATCH")
 
-        GraphCall(self.client, "/x").delete()
+        self.client._session.request.return_value = _mock_response(status_code=204, payload=None)
+        self.client._session.request.return_value.content = b""
+        self.client._session.request.return_value.json.side_effect = ValueError("No JSON")
+        result = GraphCall(self.client, "/x").delete()
         self.assertEqual(self.client._session.request.call_args.args[0], "DELETE")
+        self.assertIsNone(result.json())
 
     def test_odata_params_not_in_path(self):
         GraphCall(self.client, "/users").select("id", "displayName").filter("id eq '1'").get()

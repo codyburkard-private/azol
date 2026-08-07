@@ -1,0 +1,29 @@
+site_name: azol
+site_description: A python-based pentesting library for Azure and Entra ID
+repo_url: https://github.com/cdburkard/azol
+
+theme:
+  name: material
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            docstring_style: google
+            show_root_heading: true
+            show_source: true
+            members_order: source
+            merge_init_into_class: true
+
+nav:
+  - Home: index.md
+  - Clients:
+      - GraphClient usage: clients/graph.md
+  - Reference:
+      - GraphClient: reference/graph_client.md
+
+markdown_extensions:
+  - admonition
+  - pymdownx.superfences

@@ -20,5 +20,11 @@ setup(
         "requests==2.31.0",
         "dataclasses==0.6",
         "cryptography"
-    ]
+    ],
+    extras_require={
+        "docs": [
+            "mkdocs-material>=9.0",
+            "mkdocstrings[python]>=0.24",
+        ],
+    },
 )

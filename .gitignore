@@ -5,3 +5,9 @@ __pycache__/
 
 # C extensions
 *.so
+
+site/
+.env.live
+.venv/
+*.egg-info/
+

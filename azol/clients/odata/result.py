@@ -28,7 +28,12 @@ class GraphResult:
         self._headers = dict(headers) if headers else {}
 
     def json(self) -> Any:
-        """Return the deserialized JSON body of the first (or only) response."""
+        """Return the deserialized JSON body, or ``None`` for empty/204 responses."""
+        if getattr(self.response, "status_code", None) == 204:
+            return None
+        content = getattr(self.response, "content", None)
+        if content is not None and len(content) == 0:
+            return None
         return self.response.json()
 
     def values(self) -> List[Any]:

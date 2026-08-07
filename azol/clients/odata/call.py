@@ -143,8 +143,15 @@ class GraphCall:
     def delete(self) -> GraphResult:
         return self._mutate("DELETE")
 
+    _DEFAULT_MUTATE_STATUS = {
+        "POST": frozenset({200, 201, 204}),
+        "PUT": frozenset({200, 201, 204}),
+        "PATCH": frozenset({200, 204}),
+        "DELETE": frozenset({200, 204}),
+    }
+
     def _mutate(self, method: str) -> GraphResult:
-        expected = self._expected_status or frozenset({200})
+        expected = self._expected_status or self._DEFAULT_MUTATE_STATUS[method]
         builder = (
             self._client.request(exception_cls=self._exception_cls)
             .path(self._path)
