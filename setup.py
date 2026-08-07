@@ -18,7 +18,7 @@ setup(
     install_requires=[
         "requests==2.31.0",
         "cryptography==50.0.0",
-        "pymsalruntime==0.2.0.6; platform_system == 'Windows'",
+        "pymsalruntime==0.20.6; platform_system == 'Windows'",
         "dataclasses==0.6",
     ],
     extras_require={
