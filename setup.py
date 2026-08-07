@@ -1,7 +1,6 @@
 from setuptools import setup, find_packages
 import os
 
-version = os.environ.get('BUILD_VERSION')
 
 readmeText=""
 with open("README.md", "r") as f:
@@ -18,8 +17,8 @@ setup(
     long_description_content_type="text/markdown",
     install_requires=[
         "requests==2.31.0",
-        "cryptography",
-        "pymsalruntime",
+        "cryptography==50.0.0",
+        "pymsalruntime==0.2.0.6; platform_system == 'Windows'",
         "dataclasses==0.6",
     ],
     extras_require={
