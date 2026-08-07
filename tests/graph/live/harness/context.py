@@ -44,54 +44,89 @@ class HarnessContext:
         display_name = prefixed_name(local_part)
         upn = f"{display_name}@{self.config.upn_domain}"
         assert_safe_display_name(display_name)
-        existing = self.graph.find_user_by_upn(upn)
+        existing = self.graph.find_live_user_by_upn(upn)
         if existing:
-            user_id = existing["id"]
-            self.graph.wait_for_get(f"/users/{user_id}", label=f"user {upn}")
-            return {"id": user_id, "upn": existing["userPrincipalName"]}
-        created = self.graph.graph(
-            "POST",
-            "/users",
-            {
-                "accountEnabled": True,
-                "displayName": display_name,
-                "mailNickname": display_name.replace(".", ""),
-                "userPrincipalName": upn,
-                "passwordProfile": {
-                    "forceChangePasswordNextSignIn": False,
-                    "password": _password(),
+            return {"id": existing["id"], "upn": existing.get("userPrincipalName", upn)}
+
+        created_ids: list[str] = []
+        for round_idx in range(1, 4):
+            existing = self.graph.find_live_user_by_upn(upn)
+            if existing:
+                return {
+                    "id": existing["id"],
+                    "upn": existing.get("userPrincipalName", upn),
+                }
+            created = self.graph.graph(
+                "POST",
+                "/users",
+                {
+                    "accountEnabled": True,
+                    "displayName": display_name,
+                    "mailNickname": display_name.replace(".", ""),
+                    "userPrincipalName": upn,
+                    "passwordProfile": {
+                        "forceChangePasswordNextSignIn": False,
+                        "password": _password(),
+                    },
                 },
-            },
-        )
-        if not isinstance(created, dict) or "id" not in created:
-            raise AzCliError(f"failed to create user {upn}")
-        self.graph.wait_for_get(f"/users/{created['id']}", label=f"user {upn}")
-        return {"id": created["id"], "upn": created.get("userPrincipalName", upn)}
+            )
+            if not isinstance(created, dict) or "id" not in created:
+                raise AzCliError(f"failed to create user {upn} (round {round_idx})")
+            created_ids.append(created["id"])
+            try:
+                live = self.graph.wait_until_readable(
+                    f"/users/{created['id']}",
+                    label=f"user {upn}",
+                    fallback=lambda: self.graph.find_live_user_by_upn(upn),
+                )
+                return {
+                    "id": live["id"],
+                    "upn": live.get("userPrincipalName", upn),
+                }
+            except AzCliError:
+                continue
+        raise AzCliError(f"failed to create readable user {upn}; tried ids={created_ids}")
 
     def ensure_group(self, display_name: str) -> dict[str, str]:
         assert_safe_display_name(display_name)
-        existing = self.graph.find_by_display_name("groups", display_name)
+        existing = self.graph.find_live_by_display_name("groups", display_name)
         if existing:
-            group_id = existing["id"]
-            self.graph.wait_for_get(f"/groups/{group_id}", label=f"group {display_name}")
-            return {"id": group_id, "displayName": display_name}
-        created = self.graph.graph(
-            "POST",
-            "/groups",
-            {
-                "displayName": display_name,
-                "mailEnabled": False,
-                "mailNickname": display_name.replace("-", "")[:64],
-                "securityEnabled": True,
-            },
+            return {"id": existing["id"], "displayName": display_name}
+
+        created_ids: list[str] = []
+        for round_idx in range(1, 4):
+            existing = self.graph.find_live_by_display_name("groups", display_name)
+            if existing:
+                return {"id": existing["id"], "displayName": display_name}
+            created = self.graph.graph(
+                "POST",
+                "/groups",
+                {
+                    "displayName": display_name,
+                    "mailEnabled": False,
+                    "mailNickname": display_name.replace("-", "")[:64],
+                    "securityEnabled": True,
+                },
+            )
+            if not isinstance(created, dict) or "id" not in created:
+                raise AzCliError(
+                    f"failed to create group {display_name} (round {round_idx})"
+                )
+            created_ids.append(created["id"])
+            try:
+                live = self.graph.wait_until_readable(
+                    f"/groups/{created['id']}",
+                    label=f"group {display_name}",
+                    fallback=lambda: self.graph.find_live_by_display_name(
+                        "groups", display_name
+                    ),
+                )
+                return {"id": live["id"], "displayName": display_name}
+            except AzCliError:
+                continue
+        raise AzCliError(
+            f"failed to create readable group {display_name}; tried ids={created_ids}"
         )
-        if not isinstance(created, dict) or "id" not in created:
-            raise AzCliError(f"failed to create group {display_name}")
-        self.graph.wait_for_get(
-            f"/groups/{created['id']}",
-            label=f"group {display_name}",
-        )
-        return {"id": created["id"], "displayName": display_name}
 
     def ensure_group_member(self, group_id: str, member_id: str) -> None:
         self.graph.wait_for_get(f"/groups/{group_id}", label=f"group {group_id}")

@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import time
 from graph.live.harness.az_auth import assert_logged_in_for_tenant
 from graph.live.harness.config import (
     STATE_PREFIX,
@@ -127,6 +128,9 @@ def cmd_reset(names: list[str] | None) -> int:
         _orphan_sweep(ctx)
     ctx.manifest["states"] = {} if names is None else ctx.manifest.get("states", {})
     save_manifest(ctx.manifest)
+    # Deletes are eventually consistent; give Graph time before a following ensure.
+    print("waiting for directory deletes to settle...")
+    time.sleep(15)
     print("reset complete")
     return 0
 
