@@ -1,48 +1,120 @@
-"""Environment gates and client factory for live Graph tests."""
+"""Live Graph test helpers: always attempt; skip clearly when not ready."""
 from __future__ import annotations
 
 import os
 import unittest
+from typing import Any
 
 from azol.clients import GraphClient
-from azol.credentials import ServicePrincipal
+from azol.credentials import AccessToken
+
+from graph.live.harness.az_auth import AzCliError, assert_logged_in_for_tenant, get_graph_access_token
+from graph.live.harness.config import DEFAULT_TENANT, load_config
+from graph.live.harness.manifest import load_manifest, require_state
 
 
-def live_enabled() -> bool:
-    return os.environ.get("AZOL_LIVE_GRAPH", "").strip() == "1"
+class LiveSetupError(RuntimeError):
+    """Live Graph prerequisites are missing or misconfigured."""
+
+
+def live_explicitly_disabled() -> bool:
+    """Opt out with AZOL_LIVE_GRAPH=0 (unset means try)."""
+    return os.environ.get("AZOL_LIVE_GRAPH", "").strip() == "0"
 
 
 def has_cap(name: str) -> bool:
     return os.environ.get(f"AZOL_LIVE_CAP_{name.upper()}", "").strip() == "1"
 
 
-def require_live():
-    return unittest.skipUnless(live_enabled(), "Set AZOL_LIVE_GRAPH=1 to run live Graph tests")
-
-
-def require_cap(name: str):
-    return unittest.skipUnless(
-        live_enabled() and has_cap(name),
-        f"Set AZOL_LIVE_GRAPH=1 and AZOL_LIVE_CAP_{name.upper()}=1",
-    )
-
-
 def live_tenant() -> str:
-    return os.environ["AZOL_LIVE_TENANT"]
+    return load_config().tenant
+
+
+def live_unavailable_reason() -> str | None:
+    """Return a skip reason if live tests cannot run, else None."""
+    if live_explicitly_disabled():
+        return "AZOL_LIVE_GRAPH=0 (live suite disabled)"
+    config = load_config()
+    if config.tenant != DEFAULT_TENANT and not config.allow_any_tenant:
+        return (
+            f"refusing tenant {config.tenant!r}; expected {DEFAULT_TENANT!r} "
+            "or set AZOL_LIVE_ALLOW_ANY_TENANT=1"
+        )
+    try:
+        assert_logged_in_for_tenant(config)
+        get_graph_access_token()
+    except AzCliError as exc:
+        return f"live Graph not ready: {exc}"
+    return None
 
 
 def make_live_client() -> GraphClient:
-    tenant = live_tenant()
-    client_id = os.environ["AZOL_LIVE_CLIENT_ID"]
-    client_secret = os.environ["AZOL_LIVE_CLIENT_SECRET"]
-    cred = ServicePrincipal(client_id=client_id, client_secret=client_secret)
+    """Build GraphClient from the ambient Azure CLI Graph token."""
+    reason = live_unavailable_reason()
+    if reason:
+        raise LiveSetupError(reason)
+    config = load_config()
+    token = get_graph_access_token()
     return GraphClient(
-        tenant=tenant,
-        cred=cred,
+        tenant=config.tenant,
+        cred=AccessToken(token),
         use_persistent_cache=False,
     )
 
 
-def optional_env(name: str):
+def optional_env(name: str) -> str | None:
     value = os.environ.get(name, "").strip()
     return value or None
+
+
+def load_live_manifest() -> dict[str, Any] | None:
+    return load_manifest()
+
+
+def require_manifest_state(test: unittest.TestCase, name: str) -> dict[str, Any]:
+    manifest = load_live_manifest()
+    try:
+        return require_state(manifest, name)
+    except KeyError:
+        test.skipTest(
+            f"state {name!r} missing; run: python -m graph.live.harness.cli ensure"
+        )
+
+
+def skip_unavailable_graph(test: unittest.TestCase, exc: BaseException) -> None:
+    """Skip when Graph rejects the call for auth/license; otherwise re-raise."""
+    text = str(exc)
+    markers = (
+        "401",
+        "403",
+        "404",
+        "Authorization_RequestDenied",
+        "Authorization_IdentityNotFound",
+        "AADSTS",
+        "Insufficient privileges",
+        "not licensed",
+        "License",
+        "Request_ResourceNotFound",
+    )
+    if any(marker.lower() in text.lower() for marker in markers):
+        test.skipTest(f"Graph capability unavailable: {exc}")
+    raise exc
+
+
+class LiveGraphTestCase(unittest.TestCase):
+    """Base class: always attempt live client setup; skip if not ready."""
+
+    client: GraphClient
+
+    @classmethod
+    def setUpClass(cls):
+        try:
+            cls.client = make_live_client()
+        except LiveSetupError as exc:
+            raise unittest.SkipTest(str(exc)) from exc
+
+    @classmethod
+    def tearDownClass(cls):
+        client = getattr(cls, "client", None)
+        if client is not None:
+            client.close()

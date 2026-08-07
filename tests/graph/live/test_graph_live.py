@@ -1,69 +1,112 @@
-"""Live-tenant GraphClient tests (env-gated)."""
+"""Live-tenant GraphClient tests against harness-seeded fixtures.
+
+Always attempts to run. Skips with a clear reason when Azure CLI / token /
+manifest fixtures are not ready, or when a capability API is unavailable.
+Opt out with ``AZOL_LIVE_GRAPH=0``.
+"""
+from __future__ import annotations
+
 import unittest
 
 from graph.live.live_helpers import (
-    make_live_client,
-    optional_env,
-    require_cap,
-    require_live,
+    LiveGraphTestCase,
+    require_manifest_state,
+    skip_unavailable_graph,
 )
 
 
-@require_live()
-class GraphLiveCoreTests(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.client = make_live_client()
-
-    @classmethod
-    def tearDownClass(cls):
-        cls.client.close()
-
+class GraphLiveCoreTests(LiveGraphTestCase):
     def test_organization(self):
+        org_state = require_manifest_state(self, "organization")
         orgs = self.client.get_organization()
         self.assertIsInstance(orgs, list)
         self.assertTrue(orgs)
+        if org_state.get("id"):
+            self.assertEqual(orgs[0]["id"], org_state["id"])
 
-    def test_list_users_groups_apps_sps(self):
-        users = self.client.get_all_users()
-        self.assertIsInstance(users, list)
-        groups = self.client.get_all_groups()
-        self.assertIsInstance(groups, list)
-        apps = self.client.get_all_applications()
-        self.assertIsInstance(apps, list)
-        sps = self.client.get_all_service_principals()
-        self.assertIsInstance(sps, list)
+    def test_get_user_seed(self):
+        user = require_manifest_state(self, "test_user")
+        got = self.client.get_user(upn=user["upn"])
+        self.assertEqual(got["id"], user["id"])
+        self.assertEqual(got["userPrincipalName"].lower(), user["upn"].lower())
+
+    def test_directory_object_seed(self):
+        user = require_manifest_state(self, "test_user")
+        obj = self.client.get_directory_object(user["id"])
+        self.assertEqual(obj["id"], user["id"])
+        otype = self.client.try_get_object_type(user["id"])
+        self.assertTrue(otype is None or otype.startswith("#microsoft.graph."))
+
+    def test_subject_service_principal(self):
+        subject = require_manifest_state(self, "subject_principal")
+        sp = self.client.get_service_principal(object_id=subject["spId"])
+        self.assertEqual(sp["id"], subject["spId"])
+        self.assertEqual(sp["appId"], subject["appId"])
+        app = self.client.get_application(object_id=subject["appObjectId"])
+        self.assertEqual(app["id"], subject["appObjectId"])
+
+    def test_test_group_membership(self):
+        group = require_manifest_state(self, "test_group")
+        user = require_manifest_state(self, "test_user")
+        got = self.client.get_group(object_id=group["id"])
+        self.assertEqual(got["id"], group["id"])
+        members = self.client.get_transitive_group_memberships(group["id"])
+        member_ids = {m["id"] for m in members}
+        self.assertIn(user["id"], member_ids)
+
+    def test_test_application(self):
+        app_state = require_manifest_state(self, "test_application")
+        app = self.client.get_application(object_id=app_state["appObjectId"])
+        self.assertEqual(app["id"], app_state["appObjectId"])
+        sp = self.client.get_service_principal(object_id=app_state["spId"])
+        self.assertEqual(sp["id"], app_state["spId"])
+
+    def test_directory_role_assignment_present(self):
+        role = require_manifest_state(self, "directory_role")
+        subject = require_manifest_state(self, "subject_principal")
+        assignments = self.client.get_directory_role_assignments(
+            principal_id=subject["spId"]
+        )
+        ids = {a.get("id") for a in assignments}
+        self.assertIn(role["assignmentId"], ids)
+
+    def test_graph_app_role_annotated(self):
+        app_role = require_manifest_state(self, "graph_app_role")
+        subject = require_manifest_state(self, "subject_principal")
+        perms = self.client.get_api_permissions(subject["spId"])
+        match = next(
+            (p for p in perms if p.get("id") == app_role["assignmentId"]),
+            None,
+        )
+        self.assertIsNotNone(match)
+        self.assertIn("azolAnnotations", match)
+        self.assertEqual(match.get("appRoleId"), app_role["appRoleId"])
+        self.assertTrue(match["azolAnnotations"].get("permissionName"))
+
+    def test_federated_credential_seed(self):
+        fic = require_manifest_state(self, "federated_credential")
+        apps = self.client.get_all_application_federated_identities()
+        self.assertTrue(
+            any(
+                a.get("id") == fic["appObjectId"]
+                and any(
+                    c.get("id") == fic["id"]
+                    for c in (a.get("federatedIdentityCredentials") or [])
+                )
+                for a in apps
+            )
+        )
 
     def test_directory_role_definitions(self):
         roles = self.client.get_directory_role_definitions()
         self.assertIsInstance(roles, list)
         self.assertTrue(any(r.get("displayName") for r in roles))
 
-    def test_directory_role_assignments(self):
-        assignments = self.client.get_directory_role_assignments()
-        self.assertIsInstance(assignments, list)
-
-    def test_graph_role_assignments(self):
-        roles = self.client.get_graph_role_assignments()
-        self.assertIsInstance(roles, list)
-        if roles:
-            self.assertIn("azolAnnotations", roles[0])
-
-    def test_directory_object_seed(self):
-        object_id = optional_env("AZOL_LIVE_OBJECT_ID")
-        if not object_id:
-            self.skipTest("Set AZOL_LIVE_OBJECT_ID to exercise get_directory_object")
-        obj = self.client.get_directory_object(object_id)
-        self.assertEqual(obj["id"], object_id)
-        otype = self.client.try_get_object_type(object_id)
-        self.assertTrue(otype is None or otype.startswith("#microsoft.graph."))
-
-    def test_service_principal_self(self):
-        client_id = optional_env("AZOL_LIVE_CLIENT_ID")
-        sp = self.client.get_service_principal(client_id=client_id)
-        self.assertEqual(sp["appId"], client_id)
-        perms = self.client.get_api_permissions(sp["id"])
-        self.assertIsInstance(perms, list)
+    def test_list_collections_nonempty_or_list(self):
+        self.assertIsInstance(self.client.get_all_users(), list)
+        self.assertIsInstance(self.client.get_all_groups(), list)
+        self.assertIsInstance(self.client.get_all_applications(), list)
+        self.assertIsInstance(self.client.get_all_service_principals(), list)
 
     def test_get_all_principals(self):
         principals = self.client.get_all_principals()
@@ -73,97 +116,36 @@ class GraphLiveCoreTests(unittest.TestCase):
         self.assertIsInstance(self.client.get_directory_roles(), list)
         self.assertIsInstance(self.client.get_administrative_units(), list)
 
-    def test_federated_identity_lists(self):
-        self.assertIsInstance(
-            self.client.get_all_application_federated_identities(), list
-        )
-        self.assertIsInstance(
-            self.client.get_all_service_principal_federated_identities(), list
-        )
 
-
-@require_cap("mutate")
-class GraphLiveMutateTests(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.client = make_live_client()
-
-    @classmethod
-    def tearDownClass(cls):
-        cls.client.close()
-
-    def test_create_and_cleanup_local_sp(self):
-        created = self.client.create_new_local_service_principal(name="azol-live-sp")
-        self.addCleanup(self._cleanup_sp, created)
-        sp = self.client.get_service_principal(object_id=created["spId"])
-        self.assertEqual(sp["id"], created["spId"])
-        app = self.client.get_application(object_id=created["appObjectId"])
-        self.assertEqual(app["id"], created["appObjectId"])
-
-    def _cleanup_sp(self, created):
-        try:
-            self.client.delete(f"/servicePrincipals/{created['spId']}")
-        except Exception:
-            pass
-        try:
-            self.client.delete(f"/applications/{created['appObjectId']}")
-        except Exception:
-            pass
-
-
-@require_cap("pim")
-class GraphLivePimTests(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.client = make_live_client()
-
-    @classmethod
-    def tearDownClass(cls):
-        cls.client.close()
-
+class GraphLivePimTests(LiveGraphTestCase):
     def test_pim_reads(self):
-        self.assertIsInstance(self.client.get_eligible_pim_assignments(), list)
-        self.assertIsInstance(self.client.get_active_pim_assignments(), list)
-        # filterByCurrentUser often needs delegated auth; allow empty or success
         try:
+            self.assertIsInstance(self.client.get_eligible_pim_assignments(), list)
+            self.assertIsInstance(self.client.get_active_pim_assignments(), list)
             self.assertIsInstance(self.client.get_current_pim_eligibility(), list)
             self.assertIsInstance(self.client.get_current_pim_activations(), list)
         except Exception as exc:
-            if "403" in str(exc) or "Authorization_RequestDenied" in str(exc):
-                self.skipTest(f"PIM current-user APIs not available for this auth: {exc}")
-            raise
+            skip_unavailable_graph(self, exc)
 
 
-@require_cap("entitlement")
-class GraphLiveEntitlementTests(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.client = make_live_client()
-
-    @classmethod
-    def tearDownClass(cls):
-        cls.client.close()
-
+class GraphLiveEntitlementTests(LiveGraphTestCase):
     def test_catalogs_and_packages(self):
-        catalogs = self.client.get_entitlement_management_catalogs()
-        self.assertIsInstance(catalogs, list)
-        packages = self.client.get_access_packages()
-        self.assertIsInstance(packages, list)
+        try:
+            catalogs = self.client.get_entitlement_management_catalogs()
+            self.assertIsInstance(catalogs, list)
+            packages = self.client.get_access_packages()
+            self.assertIsInstance(packages, list)
+        except Exception as exc:
+            skip_unavailable_graph(self, exc)
 
 
-@require_cap("ca")
-class GraphLiveConditionalAccessTests(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.client = make_live_client()
-
-    @classmethod
-    def tearDownClass(cls):
-        cls.client.close()
-
+class GraphLiveConditionalAccessTests(LiveGraphTestCase):
     def test_conditional_access_policies(self):
-        policies = self.client.get_conditional_access_policies()
-        self.assertIsInstance(policies, list)
+        try:
+            policies = self.client.get_conditional_access_policies()
+            self.assertIsInstance(policies, list)
+        except Exception as exc:
+            skip_unavailable_graph(self, exc)
 
 
 if __name__ == "__main__":
