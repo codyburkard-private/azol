@@ -18,8 +18,9 @@ setup(
     long_description_content_type="text/markdown",
     install_requires=[
         "requests==2.31.0",
+        "cryptography",
+        "pymsalruntime",
         "dataclasses==0.6",
-        "cryptography"
     ],
     extras_require={
         "docs": [
