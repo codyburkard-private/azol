@@ -1260,12 +1260,29 @@ class GraphClient(OAuthHTTPClient):
                 f"failed to create service principal for application {app_id}"
             )
         sp_id = sp["id"]
-        secret = (
-            self.call(f"/servicePrincipals/{sp_id}/addPassword")
-            .body({"passwordCredential": {"displayName": "inconspicuous"}})
-            .post()
-            .json()
-        )["secretText"]
+        # Wait until the SP is readable before addPassword (same replication lag).
+        for attempt in range(1, 9):
+            try:
+                self.call(f"/servicePrincipals/{sp_id}").get()
+                break
+            except AzolHTTPError as exc:
+                if getattr(exc, "status_code", None) != 404 or attempt >= 8:
+                    raise
+                time.sleep(2)
+        secret = None
+        for attempt in range(1, 9):
+            try:
+                secret = (
+                    self.call(f"/servicePrincipals/{sp_id}/addPassword")
+                    .body({"passwordCredential": {"displayName": "inconspicuous"}})
+                    .post()
+                    .json()
+                )["secretText"]
+                break
+            except AzolHTTPError as exc:
+                if getattr(exc, "status_code", None) != 404 or attempt >= 8:
+                    raise
+                time.sleep(2)
         return {
             "clientId": app_id,
             "appObjectId": app_object_id,

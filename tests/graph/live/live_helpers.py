@@ -106,7 +106,9 @@ def skip_unavailable_graph(test: unittest.TestCase, exc: BaseException) -> None:
     if any(marker in haystack for marker in license_markers):
         test.skipTest(f"Graph capability unavailable (license): {exc}")
 
-    if status in (401, 403, 404):
+    # Auth/permission gaps only. Do not treat 404 as "unavailable" — mutate tests
+    # hit Request_ResourceNotFound during Entra replication lag.
+    if status in (401, 403):
         test.skipTest(f"Graph capability unavailable: {exc}")
 
     markers = (
@@ -116,7 +118,6 @@ def skip_unavailable_graph(test: unittest.TestCase, exc: BaseException) -> None:
         "aadsts",
         "insufficient privileges",
         "required scopes are missing",
-        "request_resourcenotfound",
     )
     if any(marker in haystack for marker in markers):
         test.skipTest(f"Graph capability unavailable: {exc}")
