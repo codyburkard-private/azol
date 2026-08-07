@@ -5,22 +5,69 @@ import json
 import os
 import tempfile
 import time
-from typing import Any
+from collections.abc import Callable
+from typing import Any, TypeVar
 from urllib.parse import quote
 
 from graph.live.harness.az_auth import AzCliError, run_az
 from graph.live.harness.config import GRAPH_V1
 
-# Entra directory writes are eventually consistent; SP create often races app create.
-_APP_VISIBLE_ATTEMPTS = 8
-_APP_VISIBLE_SLEEP_S = 2.0
-_SP_CREATE_ATTEMPTS = 8
-_SP_CREATE_SLEEP_S = 2.0
+# Entra directory writes are eventually consistent across partitions.
+_CONSISTENCY_ATTEMPTS = 10
+_CONSISTENCY_SLEEP_S = 2.0
+
+T = TypeVar("T")
 
 
 def _odata_eq(field: str, value: str) -> str:
     escaped = value.replace("'", "''")
     return f"{field} eq '{escaped}'"
+
+
+def is_consistency_error(exc: BaseException) -> bool:
+    detail = str(exc)
+    markers = (
+        "Request_ResourceNotFound",
+        "ResourceNotFound",
+        "Not Found",
+        "does not exist or one of its queried reference-property objects are not present",
+        "NoBackingApplicationObject",
+        "does not reference a valid application object",
+    )
+    return any(marker in detail for marker in markers)
+
+
+def with_consistency_retry(
+    operation: Callable[[], T],
+    *,
+    label: str,
+    attempts: int = _CONSISTENCY_ATTEMPTS,
+    sleep_s: float = _CONSISTENCY_SLEEP_S,
+) -> T:
+    """Retry Graph operations that fail due to Entra replication lag."""
+    last_error: Exception | None = None
+    for attempt in range(1, attempts + 1):
+        try:
+            return operation()
+        except AzCliError as exc:
+            last_error = exc
+            if not is_consistency_error(exc) or attempt >= attempts:
+                raise
+            time.sleep(sleep_s)
+    raise AzCliError(f"{label} failed after {attempts} attempts: {last_error}")
+
+
+def wait_for_get(path: str, *, label: str | None = None) -> dict[str, Any]:
+    """Poll GET until the resource is readable."""
+    resolved_label = label or f"wait for {path}"
+
+    def _get() -> dict[str, Any]:
+        payload = graph("GET", path)
+        if not isinstance(payload, dict) or "id" not in payload:
+            raise AzCliError(f"{resolved_label}: empty or invalid response")
+        return payload
+
+    return with_consistency_retry(_get, label=resolved_label)
 
 
 def graph(
@@ -81,6 +128,19 @@ def graph_list(path: str, *, filter_expr: str | None = None) -> list[dict[str, A
     return []
 
 
+def graph_list_consistent(
+    path: str,
+    *,
+    filter_expr: str | None = None,
+    label: str | None = None,
+) -> list[dict[str, Any]]:
+    """Like graph_list, but retries NotFound from parent-resource replication lag."""
+    return with_consistency_retry(
+        lambda: graph_list(path, filter_expr=filter_expr),
+        label=label or f"list {path}",
+    )
+
+
 def find_by_display_name(collection: str, display_name: str) -> dict[str, Any] | None:
     rows = graph_list(f"/{collection}", filter_expr=_odata_eq("displayName", display_name))
     for row in rows:
@@ -104,52 +164,47 @@ def find_sp_by_app_id(app_id: str) -> dict[str, Any] | None:
 
 def _wait_for_application(app_object_id: str, app_id: str) -> None:
     """Poll until the application is readable by object id and appId filter."""
-    last_error: Exception | None = None
-    for attempt in range(1, _APP_VISIBLE_ATTEMPTS + 1):
-        try:
-            fetched = graph("GET", f"/applications/{app_object_id}")
-            if isinstance(fetched, dict) and fetched.get("appId") == app_id:
-                by_app_id = graph_list(
-                    "/applications",
-                    filter_expr=_odata_eq("appId", app_id),
-                )
-                if any(row.get("id") == app_object_id for row in by_app_id):
-                    return
-        except AzCliError as exc:
-            last_error = exc
-        if attempt < _APP_VISIBLE_ATTEMPTS:
-            time.sleep(_APP_VISIBLE_SLEEP_S)
-    detail = f" ({last_error})" if last_error else ""
-    raise AzCliError(
-        f"application {app_object_id} (appId={app_id}) not visible after "
-        f"{_APP_VISIBLE_ATTEMPTS} attempts{detail}"
+
+    def _ready() -> dict[str, Any]:
+        fetched = graph("GET", f"/applications/{app_object_id}")
+        if not isinstance(fetched, dict):
+            raise AzCliError(f"application {app_object_id} not ready")
+        if fetched.get("appId") != app_id:
+            raise AzCliError(
+                f"application {app_object_id} not ready "
+                f"(expected appId={app_id}, got {fetched.get('appId')})"
+            )
+        by_app_id = graph_list(
+            "/applications",
+            filter_expr=_odata_eq("appId", app_id),
+        )
+        if not any(row.get("id") == app_object_id for row in by_app_id):
+            raise AzCliError(
+                f"application {app_object_id} not yet returned by appId filter"
+            )
+        return fetched
+
+    with_consistency_retry(
+        _ready,
+        label=f"application {app_object_id} (appId={app_id}) visibility",
     )
 
 
 def _create_service_principal(app_id: str, display_name: str) -> dict[str, Any]:
     """Create SP with retries for NoBackingApplicationObject replication lag."""
-    last_error: Exception | None = None
-    for attempt in range(1, _SP_CREATE_ATTEMPTS + 1):
+
+    def _create() -> dict[str, Any]:
         existing = find_sp_by_app_id(app_id)
         if existing is not None:
             return existing
-        try:
-            sp = graph("POST", "/servicePrincipals", {"appId": app_id})
-            if isinstance(sp, dict) and "id" in sp:
-                return sp
-            raise AzCliError(f"failed to create service principal for {display_name}")
-        except AzCliError as exc:
-            last_error = exc
-            detail = str(exc)
-            retryable = (
-                "NoBackingApplicationObject" in detail
-                or "does not reference a valid application object" in detail
-            )
-            if not retryable or attempt >= _SP_CREATE_ATTEMPTS:
-                raise
-            time.sleep(_SP_CREATE_SLEEP_S)
-    raise AzCliError(
-        f"failed to create service principal for {display_name}: {last_error}"
+        sp = graph("POST", "/servicePrincipals", {"appId": app_id})
+        if isinstance(sp, dict) and "id" in sp:
+            return sp
+        raise AzCliError(f"failed to create service principal for {display_name}")
+
+    return with_consistency_retry(
+        _create,
+        label=f"create service principal for {display_name}",
     )
 
 
@@ -167,15 +222,24 @@ def ensure_application(display_name: str) -> dict[str, str]:
     app_object_id = app["id"]
     app_id = app.get("appId")
     if not app_id:
-        fetched = graph("GET", f"/applications/{app_object_id}")
-        if not isinstance(fetched, dict) or not fetched.get("appId"):
+        fetched = wait_for_get(
+            f"/applications/{app_object_id}",
+            label=f"application {display_name}",
+        )
+        app_id = fetched.get("appId")
+        if not app_id:
             raise AzCliError(f"application {display_name} missing appId")
-        app_id = fetched["appId"]
     if created:
         _wait_for_application(app_object_id, app_id)
+    else:
+        wait_for_get(
+            f"/applications/{app_object_id}",
+            label=f"application {display_name}",
+        )
     sp = find_sp_by_app_id(app_id)
     if sp is None:
         sp = _create_service_principal(app_id, display_name)
+    wait_for_get(f"/servicePrincipals/{sp['id']}", label=f"service principal {display_name}")
     return {
         "appObjectId": app_object_id,
         "appId": app_id,

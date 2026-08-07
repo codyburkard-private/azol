@@ -46,7 +46,9 @@ class HarnessContext:
         assert_safe_display_name(display_name)
         existing = self.graph.find_user_by_upn(upn)
         if existing:
-            return {"id": existing["id"], "upn": existing["userPrincipalName"]}
+            user_id = existing["id"]
+            self.graph.wait_for_get(f"/users/{user_id}", label=f"user {upn}")
+            return {"id": user_id, "upn": existing["userPrincipalName"]}
         created = self.graph.graph(
             "POST",
             "/users",
@@ -63,13 +65,16 @@ class HarnessContext:
         )
         if not isinstance(created, dict) or "id" not in created:
             raise AzCliError(f"failed to create user {upn}")
+        self.graph.wait_for_get(f"/users/{created['id']}", label=f"user {upn}")
         return {"id": created["id"], "upn": created.get("userPrincipalName", upn)}
 
     def ensure_group(self, display_name: str) -> dict[str, str]:
         assert_safe_display_name(display_name)
         existing = self.graph.find_by_display_name("groups", display_name)
         if existing:
-            return {"id": existing["id"], "displayName": display_name}
+            group_id = existing["id"]
+            self.graph.wait_for_get(f"/groups/{group_id}", label=f"group {display_name}")
+            return {"id": group_id, "displayName": display_name}
         created = self.graph.graph(
             "POST",
             "/groups",
@@ -82,42 +87,91 @@ class HarnessContext:
         )
         if not isinstance(created, dict) or "id" not in created:
             raise AzCliError(f"failed to create group {display_name}")
+        self.graph.wait_for_get(
+            f"/groups/{created['id']}",
+            label=f"group {display_name}",
+        )
         return {"id": created["id"], "displayName": display_name}
 
     def ensure_group_member(self, group_id: str, member_id: str) -> None:
-        members = self.graph.graph_list(f"/groups/{group_id}/members")
-        if any(m.get("id") == member_id for m in members):
-            return
-        self.graph.graph(
-            "POST",
-            f"/groups/{group_id}/members/$ref",
-            {
-                "@odata.id": f"https://graph.microsoft.com/v1.0/directoryObjects/{member_id}"
-            },
+        self.graph.wait_for_get(f"/groups/{group_id}", label=f"group {group_id}")
+        self.graph.wait_for_get(
+            f"/directoryObjects/{member_id}",
+            label=f"member {member_id}",
+        )
+
+        def _ensure() -> None:
+            members = self.graph.graph_list(f"/groups/{group_id}/members")
+            if any(m.get("id") == member_id for m in members):
+                return
+            self.graph.graph(
+                "POST",
+                f"/groups/{group_id}/members/$ref",
+                {
+                    "@odata.id": (
+                        f"https://graph.microsoft.com/v1.0/directoryObjects/{member_id}"
+                    )
+                },
+            )
+
+        self.graph.with_consistency_retry(
+            _ensure,
+            label=f"ensure group member {member_id} on {group_id}",
         )
 
     def ensure_group_owner(self, group_id: str, owner_id: str) -> None:
-        owners = self.graph.graph_list(f"/groups/{group_id}/owners")
-        if any(o.get("id") == owner_id for o in owners):
-            return
-        self.graph.graph(
-            "POST",
-            f"/groups/{group_id}/owners/$ref",
-            {
-                "@odata.id": f"https://graph.microsoft.com/v1.0/directoryObjects/{owner_id}"
-            },
+        self.graph.wait_for_get(f"/groups/{group_id}", label=f"group {group_id}")
+        self.graph.wait_for_get(
+            f"/directoryObjects/{owner_id}",
+            label=f"owner {owner_id}",
+        )
+
+        def _ensure() -> None:
+            owners = self.graph.graph_list(f"/groups/{group_id}/owners")
+            if any(o.get("id") == owner_id for o in owners):
+                return
+            self.graph.graph(
+                "POST",
+                f"/groups/{group_id}/owners/$ref",
+                {
+                    "@odata.id": (
+                        f"https://graph.microsoft.com/v1.0/directoryObjects/{owner_id}"
+                    )
+                },
+            )
+
+        self.graph.with_consistency_retry(
+            _ensure,
+            label=f"ensure group owner {owner_id} on {group_id}",
         )
 
     def ensure_app_owner(self, app_object_id: str, owner_id: str) -> None:
-        owners = self.graph.graph_list(f"/applications/{app_object_id}/owners")
-        if any(o.get("id") == owner_id for o in owners):
-            return
-        self.graph.graph(
-            "POST",
-            f"/applications/{app_object_id}/owners/$ref",
-            {
-                "@odata.id": f"https://graph.microsoft.com/v1.0/directoryObjects/{owner_id}"
-            },
+        self.graph.wait_for_get(
+            f"/applications/{app_object_id}",
+            label=f"application {app_object_id}",
+        )
+        self.graph.wait_for_get(
+            f"/directoryObjects/{owner_id}",
+            label=f"owner {owner_id}",
+        )
+
+        def _ensure() -> None:
+            owners = self.graph.graph_list(f"/applications/{app_object_id}/owners")
+            if any(o.get("id") == owner_id for o in owners):
+                return
+            self.graph.graph(
+                "POST",
+                f"/applications/{app_object_id}/owners/$ref",
+                {
+                    "@odata.id": (
+                        f"https://graph.microsoft.com/v1.0/directoryObjects/{owner_id}"
+                    )
+                },
+            )
+
+        self.graph.with_consistency_retry(
+            _ensure,
+            label=f"ensure app owner {owner_id} on {app_object_id}",
         )
 
     def ensure_directory_role_assignment(
@@ -125,6 +179,10 @@ class HarnessContext:
         principal_id: str,
         role_display_name: str = DIRECTORY_READERS_DISPLAY_NAME,
     ) -> dict[str, str]:
+        self.graph.wait_for_get(
+            f"/directoryObjects/{principal_id}",
+            label=f"principal {principal_id}",
+        )
         roles = self.graph.graph_list(
             "/roleManagement/directory/roleDefinitions",
             filter_expr=f"displayName eq '{role_display_name.replace(chr(39), chr(39)+chr(39))}'",
@@ -133,41 +191,52 @@ class HarnessContext:
         if not role:
             raise AzCliError(f"role definition not found: {role_display_name}")
         role_definition_id = role["id"]
-        assignments = self.graph.graph_list(
-            "/roleManagement/directory/roleAssignments",
-            filter_expr=f"principalId eq '{principal_id}'",
-        )
-        for assignment in assignments:
-            if assignment.get("roleDefinitionId") == role_definition_id:
-                return {
-                    "assignmentId": assignment["id"],
-                    "roleDefinitionId": role_definition_id,
+
+        def _ensure() -> dict[str, str]:
+            assignments = self.graph.graph_list(
+                "/roleManagement/directory/roleAssignments",
+                filter_expr=f"principalId eq '{principal_id}'",
+            )
+            for assignment in assignments:
+                if assignment.get("roleDefinitionId") == role_definition_id:
+                    return {
+                        "assignmentId": assignment["id"],
+                        "roleDefinitionId": role_definition_id,
+                        "principalId": principal_id,
+                        "roleDisplayName": role_display_name,
+                    }
+            created = self.graph.graph(
+                "POST",
+                "/roleManagement/directory/roleAssignments",
+                {
                     "principalId": principal_id,
-                    "roleDisplayName": role_display_name,
-                }
-        created = self.graph.graph(
-            "POST",
-            "/roleManagement/directory/roleAssignments",
-            {
-                "principalId": principal_id,
+                    "roleDefinitionId": role_definition_id,
+                    "directoryScopeId": "/",
+                },
+            )
+            if not isinstance(created, dict) or "id" not in created:
+                raise AzCliError("failed to create directory role assignment")
+            return {
+                "assignmentId": created["id"],
                 "roleDefinitionId": role_definition_id,
-                "directoryScopeId": "/",
-            },
+                "principalId": principal_id,
+                "roleDisplayName": role_display_name,
+            }
+
+        return self.graph.with_consistency_retry(
+            _ensure,
+            label=f"directory role {role_display_name} for {principal_id}",
         )
-        if not isinstance(created, dict) or "id" not in created:
-            raise AzCliError("failed to create directory role assignment")
-        return {
-            "assignmentId": created["id"],
-            "roleDefinitionId": role_definition_id,
-            "principalId": principal_id,
-            "roleDisplayName": role_display_name,
-        }
 
     def ensure_graph_app_role(
         self,
         principal_sp_id: str,
         role_value: str = GRAPH_APP_ROLE_VALUE,
     ) -> dict[str, str]:
+        self.graph.wait_for_get(
+            f"/servicePrincipals/{principal_sp_id}",
+            label=f"principal SP {principal_sp_id}",
+        )
         graph_sp = self.graph.find_sp_by_app_id(MICROSOFT_GRAPH_APP_ID)
         if not graph_sp:
             raise AzCliError("Microsoft Graph service principal not found in tenant")
@@ -196,46 +265,60 @@ class HarnessContext:
         if not role:
             raise AzCliError(f"Graph app role {role_value} not found")
         app_role_id = role["id"]
-        existing = self.graph.graph_list(
-            f"/servicePrincipals/{principal_sp_id}/appRoleAssignments"
-        )
-        for row in existing:
-            if row.get("appRoleId") == app_role_id and row.get("resourceId") == resource_sp_id:
-                return {
-                    "assignmentId": row["id"],
+
+        def _ensure() -> dict[str, str]:
+            existing = self.graph.graph_list(
+                f"/servicePrincipals/{principal_sp_id}/appRoleAssignments"
+            )
+            for row in existing:
+                if row.get("appRoleId") == app_role_id and row.get("resourceId") == resource_sp_id:
+                    return {
+                        "assignmentId": row["id"],
+                        "appRoleId": app_role_id,
+                        "resourceSpId": resource_sp_id,
+                        "principalSpId": principal_sp_id,
+                        "roleValue": role_value,
+                    }
+            created = self.graph.graph(
+                "POST",
+                f"/servicePrincipals/{principal_sp_id}/appRoleAssignments",
+                {
+                    "principalId": principal_sp_id,
+                    "resourceId": resource_sp_id,
                     "appRoleId": app_role_id,
-                    "resourceSpId": resource_sp_id,
-                    "principalSpId": principal_sp_id,
-                    "roleValue": role_value,
-                }
-        created = self.graph.graph(
-            "POST",
-            f"/servicePrincipals/{principal_sp_id}/appRoleAssignments",
-            {
-                "principalId": principal_sp_id,
-                "resourceId": resource_sp_id,
+                },
+            )
+            if not isinstance(created, dict) or "id" not in created:
+                raise AzCliError(f"failed to assign Graph app role {role_value}")
+            return {
+                "assignmentId": created["id"],
                 "appRoleId": app_role_id,
-            },
+                "resourceSpId": resource_sp_id,
+                "principalSpId": principal_sp_id,
+                "roleValue": role_value,
+            }
+
+        return self.graph.with_consistency_retry(
+            _ensure,
+            label=f"Graph app role {role_value} for {principal_sp_id}",
         )
-        if not isinstance(created, dict) or "id" not in created:
-            raise AzCliError(f"failed to assign Graph app role {role_value}")
-        return {
-            "assignmentId": created["id"],
-            "appRoleId": app_role_id,
-            "resourceSpId": resource_sp_id,
-            "principalSpId": principal_sp_id,
-            "roleValue": role_value,
-        }
 
     def ensure_password_credential(self, app_object_id: str) -> None:
         """Ensure the app has at least one password credential (secret value not stored)."""
-        app = self.graph.graph("GET", f"/applications/{app_object_id}")
-        if not isinstance(app, dict):
-            raise AzCliError(f"application {app_object_id} not found")
-        if app.get("passwordCredentials"):
-            return
-        self.graph.graph(
-            "POST",
-            f"/applications/{app_object_id}/addPassword",
-            {"passwordCredential": {"displayName": "azol-state-seed"}},
+
+        def _ensure() -> None:
+            app = self.graph.graph("GET", f"/applications/{app_object_id}")
+            if not isinstance(app, dict):
+                raise AzCliError(f"application {app_object_id} not found")
+            if app.get("passwordCredentials"):
+                return
+            self.graph.graph(
+                "POST",
+                f"/applications/{app_object_id}/addPassword",
+                {"passwordCredential": {"displayName": "azol-state-seed"}},
+            )
+
+        self.graph.with_consistency_retry(
+            _ensure,
+            label=f"password credential for application {app_object_id}",
         )

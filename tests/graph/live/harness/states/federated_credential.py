@@ -16,34 +16,46 @@ class FederatedCredentialState(BaseState):
 
     def ensure(self, ctx: HarnessContext) -> dict[str, Any]:
         app_object_id = ctx.state("test_application")["appObjectId"]
-        existing = ctx.graph.graph_list(
-            f"/applications/{app_object_id}/federatedIdentityCredentials"
+        ctx.graph.wait_for_get(
+            f"/applications/{app_object_id}",
+            label=f"application {app_object_id}",
         )
-        fic = next((f for f in existing if f.get("name") == FIC_NAME), None)
-        if fic is None:
-            tenant_id = ctx.config.tenant_id
-            if not tenant_id:
-                # discover from organization
-                orgs = ctx.graph.graph_list("/organization")
-                tenant_id = (orgs[0] or {}).get("id") if orgs else None
-            issuer = (
-                f"https://login.microsoftonline.com/{tenant_id}/v2.0"
-                if tenant_id
-                else "https://login.microsoftonline.com/common/v2.0"
+
+        def _ensure() -> dict[str, Any]:
+            existing = ctx.graph.graph_list(
+                f"/applications/{app_object_id}/federatedIdentityCredentials"
             )
-            fic = ctx.graph.graph(
-                "POST",
-                f"/applications/{app_object_id}/federatedIdentityCredentials",
-                {
-                    "name": FIC_NAME,
-                    "issuer": issuer,
-                    "subject": "azol-state-fic-subject",
-                    "audiences": ["api://AzureADTokenExchange"],
-                    "description": "azol live harness seed FIC",
-                },
-            )
-        if not isinstance(fic, dict) or "id" not in fic:
-            raise RuntimeError("failed to ensure federated credential")
+            fic = next((f for f in existing if f.get("name") == FIC_NAME), None)
+            if fic is None:
+                tenant_id = ctx.config.tenant_id
+                if not tenant_id:
+                    # discover from organization
+                    orgs = ctx.graph.graph_list("/organization")
+                    tenant_id = (orgs[0] or {}).get("id") if orgs else None
+                issuer = (
+                    f"https://login.microsoftonline.com/{tenant_id}/v2.0"
+                    if tenant_id
+                    else "https://login.microsoftonline.com/common/v2.0"
+                )
+                fic = ctx.graph.graph(
+                    "POST",
+                    f"/applications/{app_object_id}/federatedIdentityCredentials",
+                    {
+                        "name": FIC_NAME,
+                        "issuer": issuer,
+                        "subject": "azol-state-fic-subject",
+                        "audiences": ["api://AzureADTokenExchange"],
+                        "description": "azol live harness seed FIC",
+                    },
+                )
+            if not isinstance(fic, dict) or "id" not in fic:
+                raise RuntimeError("failed to ensure federated credential")
+            return fic
+
+        fic = ctx.graph.with_consistency_retry(
+            _ensure,
+            label=f"federated credential on {app_object_id}",
+        )
         data = {
             "id": fic["id"],
             "name": fic.get("name", FIC_NAME),
