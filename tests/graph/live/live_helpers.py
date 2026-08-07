@@ -82,21 +82,43 @@ def require_manifest_state(test: unittest.TestCase, name: str) -> dict[str, Any]
 
 
 def skip_unavailable_graph(test: unittest.TestCase, exc: BaseException) -> None:
-    """Skip when Graph rejects the call for auth/license; otherwise re-raise."""
+    """Skip when Graph rejects the call for auth/license; otherwise re-raise.
+
+    License errors often arrive as HTTP 400 with detail only in the response
+    body (``AzolHTTPError.body_snippet``), not in ``str(exc)``.
+    """
     text = str(exc)
-    markers = (
-        "401",
-        "403",
-        "404",
-        "Authorization_RequestDenied",
-        "Authorization_IdentityNotFound",
-        "AADSTS",
-        "Insufficient privileges",
+    body = getattr(exc, "body_snippet", None) or ""
+    status = getattr(exc, "status_code", None)
+    haystack = f"{text}\n{body}".lower()
+
+    license_markers = (
+        "aadpremiumlicenserequired",
+        "nolicense",
+        "license requirement",
+        "does not meet license",
         "not licensed",
-        "License",
-        "Request_ResourceNotFound",
+        "premium license",
+        "entra id p2",
+        "entra id governance",
+        "tenant does not meet license",
     )
-    if any(marker.lower() in text.lower() for marker in markers):
+    if any(marker in haystack for marker in license_markers):
+        test.skipTest(f"Graph capability unavailable (license): {exc}")
+
+    if status in (401, 403, 404):
+        test.skipTest(f"Graph capability unavailable: {exc}")
+
+    markers = (
+        "authorization_requestdenied",
+        "authorization_identitynotfound",
+        "accessdenied",
+        "aadsts",
+        "insufficient privileges",
+        "required scopes are missing",
+        "request_resourcenotfound",
+    )
+    if any(marker in haystack for marker in markers):
         test.skipTest(f"Graph capability unavailable: {exc}")
     raise exc
 

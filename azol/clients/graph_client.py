@@ -3,12 +3,14 @@ from __future__ import annotations
 
 import asyncio
 import string
+import time
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Union
 from urllib.parse import parse_qs, urlparse
 
 from azol.clients.oauth_http_client import OAuthHTTPClient
 from azol.clients.odata import GraphCall
 from azol.constants import GRAPHBETAURL, OAuthResourceIDs, appPermissionNameMap, roleNameMap
+from azol.http.errors import AzolHTTPError
 
 SelectArg = Optional[Union[Sequence[str], Iterable[str]]]
 
@@ -1230,13 +1232,33 @@ class GraphClient(OAuthHTTPClient):
         )
         app_id = app["appId"]
         app_object_id = app["id"]
-        sp = (
-            self.call("/servicePrincipals")
-            .body({"appId": app_id})
-            .expect(201)
-            .post()
-            .json()
-        )
+        # Directory replication can lag; SP create may fail with NoBackingApplicationObject.
+        sp = None
+        last_error: Exception | None = None
+        for attempt in range(1, 9):
+            try:
+                sp = (
+                    self.call("/servicePrincipals")
+                    .body({"appId": app_id})
+                    .expect(201)
+                    .post()
+                    .json()
+                )
+                break
+            except AzolHTTPError as exc:
+                last_error = exc
+                detail = f"{exc}\n{getattr(exc, 'body_snippet', '') or ''}"
+                retryable = (
+                    "NoBackingApplicationObject" in detail
+                    or "does not reference a valid application object" in detail
+                )
+                if not retryable or attempt >= 8:
+                    raise
+                time.sleep(2)
+        if not isinstance(sp, dict) or "id" not in sp:
+            raise last_error or AzolHTTPError(
+                f"failed to create service principal for application {app_id}"
+            )
         sp_id = sp["id"]
         secret = (
             self.call(f"/servicePrincipals/{sp_id}/addPassword")
