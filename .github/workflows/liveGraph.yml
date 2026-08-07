@@ -11,9 +11,9 @@ on:
         type: boolean
         default: true
       reset:
-        description: Reset harness states before ensure
+        description: Reset harness states before ensure (always on for push to live-test)
         type: boolean
-        default: false
+        default: true
 
 permissions:
   id-token: write
@@ -40,7 +40,7 @@ jobs:
         run: pip install -e .
 
       - name: Reset tenant states
-        if: ${{ github.event_name == 'workflow_dispatch' && inputs.reset }}
+        if: ${{ github.event_name == 'push' || inputs.reset }}
         env:
           AZOL_LIVE_TENANT: azoltest.onmicrosoft.com
           AZOL_LIVE_CLIENT_ID: ${{ vars.AZOL_LIVE_CLIENT_ID }}
