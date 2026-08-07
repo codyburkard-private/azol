@@ -1,6 +1,9 @@
 name: Live Graph harness
 
 on:
+  push:
+    branches:
+      - live-test
   workflow_dispatch:
     inputs:
       ensure:
@@ -37,7 +40,7 @@ jobs:
         run: pip install -e .
 
       - name: Reset tenant states
-        if: ${{ inputs.reset }}
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.reset }}
         env:
           AZOL_LIVE_TENANT: azoltest.onmicrosoft.com
           AZOL_LIVE_CLIENT_ID: ${{ vars.AZOL_LIVE_CLIENT_ID }}
@@ -46,7 +49,7 @@ jobs:
         run: python -m graph.live.harness.cli reset
 
       - name: Ensure tenant states
-        if: ${{ inputs.ensure }}
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.ensure }}
         env:
           AZOL_LIVE_TENANT: azoltest.onmicrosoft.com
           AZOL_LIVE_CLIENT_ID: ${{ vars.AZOL_LIVE_CLIENT_ID }}
