@@ -1,3 +1,4 @@
+from typing import Any
 import logging
 import uuid
 import json
@@ -15,8 +16,8 @@ from azol.constants import OAUTHFLOWS, FOCIClients, known_client_redirect_uris, 
 from copy import deepcopy
 from azol.utils.auth_utils import start_azure_portal_login, end_azure_portal_login
 
-def build_scope_string(oauth_resource, scopes=[], default_scope=None, openid_scope=None,
-                       profile_scope=None, offline_access_scope=None ):
+def build_scope_string(oauth_resource: str, scopes: Any=[], default_scope: Any | None=None, openid_scope: Any | None=None,
+                       profile_scope: Any | None=None, offline_access_scope: Any | None=None ) -> Any:
     extension = ""
     if openid_scope:
         extension+=f" openid"
@@ -34,7 +35,7 @@ def build_scope_string(oauth_resource, scopes=[], default_scope=None, openid_sco
         extended_scope_string=scope_string+extension
     return extended_scope_string
 
-def ests_portal_login_flow(tenant, username, cookies, useragent=UserAgents.Windows_Edge):
+def ests_portal_login_flow(tenant: str, username: str, cookies, useragent: str=UserAgents.Windows_Edge) -> Any:
 
     resp=requests.get(f"https://portal.azure.com:443/signin/index/@{tenant}?feature.argsubscriptions=true&feature.showservicehealthalerts=true&feature.prefetchtokens=true&feature.internalgraphapiversion=true&feature.selftoken=true&feature.globalresourcefilter=true&feature.msaljs=true&feature.fetchpolicyforrestypes=true&feature.testcrosscloudpuid=true&feature.useredirecthint=true&feature.usetenanthint=true&idpc=0")
 
@@ -253,7 +254,7 @@ def ests_portal_login_flow(tenant, username, cookies, useragent=UserAgents.Windo
     secrets={}
 
     class SecretExtractor(HTMLParser):
-        def handle_starttag(self, tag, attrs):
+        def handle_starttag(self, tag, attrs) -> Any:
 
             name=None
             value=None
@@ -292,7 +293,7 @@ def ests_portal_login_flow(tenant, username, cookies, useragent=UserAgents.Windo
     portal_token_data=params[1]
     return portal_token_data
 
-def ests_login_flow( tenant, client_id, ests, ests_persistent, username, scope_string, redirect_url ):
+def ests_login_flow( tenant: str, client_id: str, ests, ests_persistent, username: str, scope_string, redirect_url: str ):
     # if ESTSAUTH and ESTSAUTHPERSISTENT are both present, we can only use one.
     # request will fail if both are used. preference should be ESTSAUTHPERSISTENT
     if ests_persistent is not None:
@@ -528,7 +529,7 @@ def ests_login_flow( tenant, client_id, ests, ests_persistent, username, scope_s
         secrets={}
 
         class SecretExtractor(HTMLParser):
-            def handle_starttag(self, tag, attrs):
+            def handle_starttag(self, tag, attrs) -> Any:
 
                 name=None
                 value=None
@@ -594,7 +595,7 @@ def ests_login_flow( tenant, client_id, ests, ests_persistent, username, scope_s
     }
     return new_token_data
 
-def get_portal_tokens(tenant, username):
+def get_portal_tokens(tenant: str, username: str) -> list[Any]:
     ests=None
     ests_persistent=None
     # Azure portal has a weird auth code flow. Perform extra steps
@@ -889,7 +890,7 @@ def get_portal_tokens(tenant, username):
     secrets={}
 
     class SecretExtractor(HTMLParser):
-        def handle_starttag(self, tag, attrs):
+        def handle_starttag(self, tag, attrs) -> Any:
 
             name=None
             value=None
@@ -930,7 +931,7 @@ def get_portal_tokens(tenant, username):
     token_data["ESTSAUTHPERSISTENT"]=estspersistent
     return token_data
 
-def auth_code_flow(tenant, username, client_id, redirect_url, scope_string):
+def auth_code_flow(tenant: str, username: str, client_id: str, redirect_url: str, scope_string) -> Any:
     ests=None
     ests_persistent=None
     if client_id == FOCIClients.AzurePortal:
@@ -1224,7 +1225,7 @@ def auth_code_flow(tenant, username, client_id, redirect_url, scope_string):
         secrets={}
 
         class SecretExtractor(HTMLParser):
-            def handle_starttag(self, tag, attrs):
+            def handle_starttag(self, tag, attrs) -> Any:
 
                 name=None
                 value=None

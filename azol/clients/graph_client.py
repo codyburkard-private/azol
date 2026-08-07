@@ -69,7 +69,7 @@ class GraphClient(OAuthHTTPClient):
 
     # --- Single-object getters -------------------------------------------------
 
-    def get_me(self):
+    def get_me(self) -> dict[str, Any]:
         """Get the signed-in user or the app's service principal profile.
 
         Returns:
@@ -80,7 +80,7 @@ class GraphClient(OAuthHTTPClient):
         """
         return self.call("/me").get().json()
 
-    def get_user(self, object_id: Optional[str] = None, upn: Optional[str] = None):
+    def get_user(self, object_id: Optional[str] = None, upn: Optional[str] = None) -> dict[str, Any]:
         """Get a user by object id or user principal name.
 
         Args:
@@ -99,7 +99,7 @@ class GraphClient(OAuthHTTPClient):
         path = f"/users/{object_id if object_id is not None else upn}"
         return self.call(path).get().json()
 
-    def get_group(self, object_id: str):
+    def get_group(self, object_id: str) -> dict[str, Any]:
         """Get a group by object id.
 
         Args:
@@ -113,7 +113,7 @@ class GraphClient(OAuthHTTPClient):
         """
         return self.call(f"/groups/{object_id}").get().json()
 
-    def get_application(self, object_id: Optional[str] = None, app_id: Optional[str] = None):
+    def get_application(self, object_id: Optional[str] = None, app_id: Optional[str] = None) -> dict[str, Any]:
         """Get an application by object id or application (client) id.
 
         Args:
@@ -135,7 +135,7 @@ class GraphClient(OAuthHTTPClient):
             path = f"/applications/{object_id}"
         return self.call(path).get().json()
 
-    def get_organization(self):
+    def get_organization(self) -> list[Any]:
         """Get organization (tenant) objects.
 
         Returns:
@@ -146,7 +146,7 @@ class GraphClient(OAuthHTTPClient):
         """
         return self.call("/organization").get().values()
 
-    def get_directory_roles(self):
+    def get_directory_roles(self) -> list[Any]:
         """Get activated directory role instances in the tenant.
 
         Returns:
@@ -157,7 +157,7 @@ class GraphClient(OAuthHTTPClient):
         """
         return self.call("/directoryRoles").get().values()
 
-    def get_administrative_units(self):
+    def get_administrative_units(self) -> list[Any]:
         """Get administrative units in the tenant.
 
         Returns:
@@ -168,7 +168,7 @@ class GraphClient(OAuthHTTPClient):
         """
         return self.call("/directory/administrativeUnits").get().values()
 
-    def get_conditional_access_policies(self):
+    def get_conditional_access_policies(self) -> list[Any]:
         """Get Conditional Access policies.
 
         Notes:
@@ -184,7 +184,7 @@ class GraphClient(OAuthHTTPClient):
 
     # --- Directory roles -------------------------------------------------------
 
-    def get_directory_role_definitions(self):
+    def get_directory_role_definitions(self) -> list[Any]:
         """Get all directory role definitions.
 
         Returns:
@@ -200,7 +200,7 @@ class GraphClient(OAuthHTTPClient):
             .values()
         )
 
-    def get_directory_role_assignments(self, principal_id: Optional[str] = None):
+    def get_directory_role_assignments(self, principal_id: Optional[str] = None) -> list[Any]:
         """Get directory role assignments (non-PIM).
 
         Args:
@@ -228,7 +228,7 @@ class GraphClient(OAuthHTTPClient):
             builder = builder.filter(f"principalId eq '{principal_id}'").count(True)
         return builder.get().values()
 
-    def delete_directory_role_assignments(self, assignment_id: str):
+    def delete_directory_role_assignments(self, assignment_id: str) -> Any | None:
         """Remove an Entra ID role assignment.
 
         Args:
@@ -246,7 +246,7 @@ class GraphClient(OAuthHTTPClient):
             .json()
         )
 
-    def add_directory_role_assignment(self, role_definition_id: str, principal_id: str):
+    def add_directory_role_assignment(self, role_definition_id: str, principal_id: str) -> dict[str, Any]:
         """Assign an Entra ID role to a principal.
 
         Args:
@@ -275,7 +275,7 @@ class GraphClient(OAuthHTTPClient):
 
     # --- Entitlement management ------------------------------------------------
 
-    def get_access_catalogs_roles(self, catalog_id: str):
+    def get_access_catalogs_roles(self, catalog_id: str) -> list[Any]:
         """Get roles assigned to a specific access catalog.
 
         Args:
@@ -299,7 +299,7 @@ class GraphClient(OAuthHTTPClient):
             }
         return roles
 
-    def create_package_policy(self, policy: Mapping[str, Any]):
+    def create_package_policy(self, policy: Mapping[str, Any]) -> dict[str, Any]:
         """Create an Entitlement Management access package assignment policy.
 
         Args:
@@ -319,7 +319,7 @@ class GraphClient(OAuthHTTPClient):
             .json()
         )
 
-    def create_entitlement_management_package(self, package: Mapping[str, Any]):
+    def create_entitlement_management_package(self, package: Mapping[str, Any]) -> dict[str, Any]:
         """Create an Entitlement Management access package.
 
         Args:
@@ -339,7 +339,7 @@ class GraphClient(OAuthHTTPClient):
             .json()
         )
 
-    def create_entitlement_management_catalog(self, catalog: Mapping[str, Any]):
+    def create_entitlement_management_catalog(self, catalog: Mapping[str, Any]) -> dict[str, Any]:
         """Create an Entitlement Management catalog.
 
         Args:
@@ -359,7 +359,7 @@ class GraphClient(OAuthHTTPClient):
             .json()
         )
 
-    def get_access_packages(self):
+    def get_access_packages(self) -> list[Any]:
         """Get Entitlement Management access packages.
 
         Returns:
@@ -375,7 +375,7 @@ class GraphClient(OAuthHTTPClient):
             .values()
         )
 
-    def get_entitlement_management_catalogs(self):
+    def get_entitlement_management_catalogs(self) -> list[Any]:
         """Get Entitlement Management catalogs.
 
         Returns:
@@ -392,7 +392,7 @@ class GraphClient(OAuthHTTPClient):
 
     # --- PIM -------------------------------------------------------------------
 
-    def get_current_pim_eligibility(self):
+    def get_current_pim_eligibility(self) -> list[Any]:
         """Get PIM eligibility of the current principal.
 
         Returns:
@@ -421,7 +421,7 @@ class GraphClient(OAuthHTTPClient):
             .values()
         )
 
-    def get_current_pim_activations(self):
+    def get_current_pim_activations(self) -> list[Any]:
         """Get PIM activations of the current principal.
 
         Returns:
@@ -450,7 +450,7 @@ class GraphClient(OAuthHTTPClient):
             .values()
         )
 
-    def get_active_pim_assignments(self):
+    def get_active_pim_assignments(self) -> list[Any]:
         """Get all active PIM assignment schedules.
 
         Returns:
@@ -476,7 +476,7 @@ class GraphClient(OAuthHTTPClient):
             .values()
         )
 
-    def get_eligible_pim_assignments(self):
+    def get_eligible_pim_assignments(self) -> list[Any]:
         """Get all eligible PIM assignments.
 
         Returns:
@@ -509,7 +509,7 @@ class GraphClient(OAuthHTTPClient):
         directory_scope_id: str = "/",
         justification: str = "azol activation",
         duration: str = "PT1H",
-    ):
+    ) -> dict[str, Any]:
         """Activate an eligible PIM directory role for a principal.
 
         Args:
@@ -555,7 +555,7 @@ class GraphClient(OAuthHTTPClient):
         principal_id: Optional[str] = None,
         directory_scope_id: str = "/",
         justification: str = "azol deactivation",
-    ):
+    ) -> dict[str, Any]:
         """Deactivate an active PIM directory role for a principal.
 
         Args:
@@ -589,7 +589,7 @@ class GraphClient(OAuthHTTPClient):
 
     # --- Users / groups / principals -------------------------------------------
 
-    def get_transitive_group_memberships(self, group_id: str):
+    def get_transitive_group_memberships(self, group_id: str) -> list[Any]:
         """Get transitive members of a group.
 
         Args:
@@ -603,7 +603,7 @@ class GraphClient(OAuthHTTPClient):
         """
         return self.call(f"/groups/{group_id}/transitiveMembers").get().values()
 
-    def get_transitive_member_of(self, object_id: str):
+    def get_transitive_member_of(self, object_id: str) -> list[Any]:
         """Get groups and roles a directory object is transitively a member of.
 
         Args:
@@ -617,7 +617,7 @@ class GraphClient(OAuthHTTPClient):
         """
         return self.call(f"/directoryObjects/{object_id}/transitiveMemberOf").get().values()
 
-    def add_group_member(self, group_id: str, principal_id: str):
+    def add_group_member(self, group_id: str, principal_id: str) -> dict[str, Any]:
         """Add a member to a group.
 
         Args:
@@ -637,7 +637,7 @@ class GraphClient(OAuthHTTPClient):
             .json()
         )
 
-    def remove_group_member(self, group_id: str, principal_id: str):
+    def remove_group_member(self, group_id: str, principal_id: str) -> Any | None:
         """Remove a member from a group.
 
         Args:
@@ -656,7 +656,7 @@ class GraphClient(OAuthHTTPClient):
             .json()
         )
 
-    def add_group_owner(self, group_id: str, principal_id: str):
+    def add_group_owner(self, group_id: str, principal_id: str) -> dict[str, Any]:
         """Add an owner to a group.
 
         Args:
@@ -676,7 +676,7 @@ class GraphClient(OAuthHTTPClient):
             .json()
         )
 
-    def remove_group_owner(self, group_id: str, principal_id: str):
+    def remove_group_owner(self, group_id: str, principal_id: str) -> Any | None:
         """Remove an owner from a group.
 
         Args:
@@ -712,7 +712,7 @@ class GraphClient(OAuthHTTPClient):
         select: SelectArg = (),
         odata_filter: Optional[str] = None,
         fast: bool = False,
-    ):
+    ) -> list[Any]:
         """Get all users in the directory.
 
         Args:
@@ -779,7 +779,7 @@ class GraphClient(OAuthHTTPClient):
         select: SelectArg = (),
         owners: bool = False,
         fast: bool = False,
-    ):
+    ) -> list[Any]:
         """Get all service principals in the directory.
 
         Args:
@@ -809,7 +809,7 @@ class GraphClient(OAuthHTTPClient):
             builder = builder.expand("owners", select=("id", "displayName"))
         return builder.get().values()
 
-    def get_all_applications(self, select: SelectArg = (), owners: bool = False):
+    def get_all_applications(self, select: SelectArg = (), owners: bool = False) -> list[Any]:
         """Get all applications in the directory.
 
         Args:
@@ -833,7 +833,7 @@ class GraphClient(OAuthHTTPClient):
             builder = builder.expand("owners", select=("id", "displayName"))
         return builder.get().values()
 
-    def get_all_groups(self, select: SelectArg = (), owners: bool = False):
+    def get_all_groups(self, select: SelectArg = (), owners: bool = False) -> list[Any]:
         """Get all groups in Entra ID.
 
         Args:
@@ -857,7 +857,7 @@ class GraphClient(OAuthHTTPClient):
             builder = builder.expand("owners", select=("id", "displayName"))
         return builder.get().values()
 
-    def get_all_groups_and_memberships(self):
+    def get_all_groups_and_memberships(self) -> list[Any]:
         """Get all groups with nested ``memberOf`` relationships.
 
         Returns:
@@ -874,7 +874,7 @@ class GraphClient(OAuthHTTPClient):
             .values()
         )
 
-    def get_all_groups_and_owners(self):
+    def get_all_groups_and_owners(self) -> list[Any]:
         """Get all groups with owners.
 
         Returns:
@@ -891,7 +891,7 @@ class GraphClient(OAuthHTTPClient):
             .values()
         )
 
-    def get_all_principals(self):
+    def get_all_principals(self) -> dict[str, Any]:
         """Get all users, service principals, and groups as a principal map.
 
         Returns:
@@ -918,7 +918,7 @@ class GraphClient(OAuthHTTPClient):
             }
         return principals
 
-    def get_directory_object(self, object_id: str):
+    def get_directory_object(self, object_id: str) -> dict[str, Any]:
         """Get a directory object by id.
 
         Args:
@@ -932,7 +932,7 @@ class GraphClient(OAuthHTTPClient):
         """
         return self.call(f"/directoryObjects/{object_id}").get().json()
 
-    def try_get_object_type(self, object_id: str):
+    def try_get_object_type(self, object_id: str) -> str | None:
         """Get a directory object's ``@odata.type`` by id.
 
         Args:
@@ -949,7 +949,7 @@ class GraphClient(OAuthHTTPClient):
 
     # --- Apps / service principals / owners / secrets --------------------------
 
-    def get_service_principal(self, object_id: Optional[str] = None, client_id: Optional[str] = None):
+    def get_service_principal(self, object_id: Optional[str] = None, client_id: Optional[str] = None) -> dict[str, Any]:
         """Get a service principal by object id or client (app) id.
 
         Args:
@@ -971,7 +971,7 @@ class GraphClient(OAuthHTTPClient):
             path = f"/servicePrincipals/{object_id}"
         return self.call(path).get().json()
 
-    def get_all_service_principals_owners(self):
+    def get_all_service_principals_owners(self) -> list[Any]:
         """Get all service principals with owners.
 
         Returns:
@@ -988,7 +988,7 @@ class GraphClient(OAuthHTTPClient):
             .values()
         )
 
-    def get_all_application_owners(self):
+    def get_all_application_owners(self) -> list[Any]:
         """Get all applications with owners.
 
         Returns:
@@ -1005,7 +1005,7 @@ class GraphClient(OAuthHTTPClient):
             .values()
         )
 
-    def add_app_owner(self, app_object_id: str, principal_id: str):
+    def add_app_owner(self, app_object_id: str, principal_id: str) -> dict[str, Any]:
         """Add an owner to an application object.
 
         Args:
@@ -1025,7 +1025,7 @@ class GraphClient(OAuthHTTPClient):
             .json()
         )
 
-    def remove_app_owner(self, app_object_id: str, principal_id: str):
+    def remove_app_owner(self, app_object_id: str, principal_id: str) -> Any | None:
         """Remove an owner from an application object.
 
         Args:
@@ -1044,7 +1044,7 @@ class GraphClient(OAuthHTTPClient):
             .json()
         )
 
-    def add_sp_owner(self, sp_object_id: str, principal_id: str):
+    def add_sp_owner(self, sp_object_id: str, principal_id: str) -> dict[str, Any]:
         """Add an owner to a service principal.
 
         Args:
@@ -1064,7 +1064,7 @@ class GraphClient(OAuthHTTPClient):
             .json()
         )
 
-    def remove_sp_owner(self, sp_object_id: str, principal_id: str):
+    def remove_sp_owner(self, sp_object_id: str, principal_id: str) -> Any | None:
         """Remove an owner from a service principal.
 
         Args:
@@ -1083,7 +1083,7 @@ class GraphClient(OAuthHTTPClient):
             .json()
         )
 
-    def add_app_secret(self, app_object_id: str, name: str = "inconspicuous"):
+    def add_app_secret(self, app_object_id: str, name: str = "inconspicuous") -> dict[str, Any]:
         """Add a password credential to an application object.
 
         Args:
@@ -1099,7 +1099,7 @@ class GraphClient(OAuthHTTPClient):
         body = {"passwordCredential": {"displayName": name}}
         return self.call(f"/applications/{app_object_id}/addPassword").body(body).post().json()
 
-    def remove_app_secret(self, app_object_id: str, key_id: str):
+    def remove_app_secret(self, app_object_id: str, key_id: str) -> Any | None:
         """Remove a password credential from an application object.
 
         Args:
@@ -1119,7 +1119,7 @@ class GraphClient(OAuthHTTPClient):
             .json()
         )
 
-    def add_sp_secret(self, sp_object_id: str, name: str = "inconspicuous"):
+    def add_sp_secret(self, sp_object_id: str, name: str = "inconspicuous") -> dict[str, Any]:
         """Add a password credential to a service principal.
 
         Args:
@@ -1135,7 +1135,7 @@ class GraphClient(OAuthHTTPClient):
         body = {"passwordCredential": {"displayName": name}}
         return self.call(f"/servicePrincipals/{sp_object_id}/addPassword").body(body).post().json()
 
-    def remove_sp_secret(self, sp_object_id: str, key_id: str):
+    def remove_sp_secret(self, sp_object_id: str, key_id: str) -> Any | None:
         """Remove a password credential from a service principal.
 
         Args:
@@ -1155,7 +1155,7 @@ class GraphClient(OAuthHTTPClient):
             .json()
         )
 
-    def get_all_sp_reply_urls(self):
+    def get_all_sp_reply_urls(self) -> list[Any]:
         """Get reply URLs for all service principals.
 
         Returns:
@@ -1171,7 +1171,7 @@ class GraphClient(OAuthHTTPClient):
             .values()
         )
 
-    def get_all_service_principal_federated_identities(self):
+    def get_all_service_principal_federated_identities(self) -> list[Any]:
         """Get service principals that have federated identity credentials.
 
         Returns:
@@ -1190,7 +1190,7 @@ class GraphClient(OAuthHTTPClient):
             .values()
         )
 
-    def get_all_application_federated_identities(self):
+    def get_all_application_federated_identities(self) -> list[Any]:
         """Get applications that have federated identity credentials.
 
         Returns:
@@ -1209,7 +1209,7 @@ class GraphClient(OAuthHTTPClient):
             .values()
         )
 
-    def create_new_local_service_principal(self, name: str = "inconspicuous"):
+    def create_new_local_service_principal(self, name: str = "inconspicuous") -> dict[str, Any]:
         """Create an application, service principal, and password in this tenant.
 
         Args:
@@ -1251,7 +1251,7 @@ class GraphClient(OAuthHTTPClient):
             "spSecret": secret,
         }
 
-    def create_new_remote_service_principal(self, client_id: str):
+    def create_new_remote_service_principal(self, client_id: str) -> dict[str, Any]:
         """Create a service principal for an application in another tenant.
 
         Args:
@@ -1274,7 +1274,7 @@ class GraphClient(OAuthHTTPClient):
 
     # --- Permissions -----------------------------------------------------------
 
-    def get_graph_role_assignments(self):
+    def get_graph_role_assignments(self) -> list[Any]:
         """Get app role assignments granted on the Microsoft Graph service principal.
 
         Returns:
@@ -1294,7 +1294,7 @@ class GraphClient(OAuthHTTPClient):
             }
         return roles
 
-    def get_app_role_assigned_to(self, resource_sp_id: str):
+    def get_app_role_assigned_to(self, resource_sp_id: str) -> list[Any]:
         """Get principals assigned app roles on a resource service principal.
 
         Args:
@@ -1308,7 +1308,7 @@ class GraphClient(OAuthHTTPClient):
         """
         return self.call(f"/servicePrincipals/{resource_sp_id}/appRoleAssignedTo").get().values()
 
-    def get_all_sp_api_permissions(self):
+    def get_all_sp_api_permissions(self) -> list[Any]:
         """Get app role assignments for all service principals.
 
         Returns:
@@ -1334,7 +1334,7 @@ class GraphClient(OAuthHTTPClient):
                 }
         return sps
 
-    def get_all_sp_delegated_permissions(self):
+    def get_all_sp_delegated_permissions(self) -> list[Any]:
         """Get all oauth2 permission grants in the tenant.
 
         Returns:
@@ -1357,7 +1357,7 @@ class GraphClient(OAuthHTTPClient):
             .values()
         )
 
-    def get_api_permissions(self, sp_object_id: str):
+    def get_api_permissions(self, sp_object_id: str) -> list[Any]:
         """Get app role assignments for a service principal.
 
         Args:
@@ -1378,7 +1378,7 @@ class GraphClient(OAuthHTTPClient):
             }
         return api_permissions
 
-    def get_delegated_permissions(self, sp_object_id: str):
+    def get_delegated_permissions(self, sp_object_id: str) -> list[Any]:
         """Get delegated permission grants for a service principal.
 
         Args:
@@ -1404,7 +1404,7 @@ class GraphClient(OAuthHTTPClient):
             annotated_permissions.append(annotated)
         return annotated_permissions
 
-    def get_oauth2_permission_grants(self, sp_object_id: Optional[str] = None):
+    def get_oauth2_permission_grants(self, sp_object_id: Optional[str] = None) -> list[Any]:
         """Get oauth2 permission grants, optionally for one client SP.
 
         Args:
@@ -1424,7 +1424,7 @@ class GraphClient(OAuthHTTPClient):
             )
         return self.get_all_sp_delegated_permissions()
 
-    def assign_app_role(self, sp_object_id: str, resource_sp_id: str, app_role_id: str):
+    def assign_app_role(self, sp_object_id: str, resource_sp_id: str, app_role_id: str) -> dict[str, Any]:
         """Assign an app role to a service principal.
 
         Args:
@@ -1451,7 +1451,7 @@ class GraphClient(OAuthHTTPClient):
             .json()
         )
 
-    def remove_app_role_assignment(self, sp_object_id: str, assignment_id: str):
+    def remove_app_role_assignment(self, sp_object_id: str, assignment_id: str) -> Any | None:
         """Remove an app role assignment from a service principal.
 
         Args:
@@ -1472,7 +1472,7 @@ class GraphClient(OAuthHTTPClient):
 
     # --- Raw HTTP escape hatches -----------------------------------------------
 
-    def get(self, path: str, headers: Optional[Mapping[str, str]] = None):
+    def get(self, path: str, headers: Optional[Mapping[str, str]] = None) -> Any:
         """GET a Graph path and return deserialized JSON.
 
         Args:
@@ -1496,7 +1496,7 @@ class GraphClient(OAuthHTTPClient):
             builder = builder.header(key, value)
         return builder.get().json()
 
-    def post(self, path: str, data: Any):
+    def post(self, path: str, data: Any) -> Any:
         """POST JSON to a Graph path and return deserialized results.
 
         Args:
@@ -1511,7 +1511,7 @@ class GraphClient(OAuthHTTPClient):
         """
         return self.call(path).body(data).post().json()
 
-    def put(self, path: str, data: Any):
+    def put(self, path: str, data: Any) -> Any:
         """PUT JSON to a Graph path and return deserialized results.
 
         Args:
@@ -1526,7 +1526,7 @@ class GraphClient(OAuthHTTPClient):
         """
         return self.call(path).body(data).put().json()
 
-    def patch(self, path: str, data: Any):
+    def patch(self, path: str, data: Any) -> Any:
         """PATCH JSON to a Graph path and return deserialized results.
 
         Args:
@@ -1541,7 +1541,7 @@ class GraphClient(OAuthHTTPClient):
         """
         return self.call(path).body(data).patch().json()
 
-    def delete(self, path: str):
+    def delete(self, path: str) -> Any:
         """DELETE a Graph path and return deserialized results.
 
         Args:

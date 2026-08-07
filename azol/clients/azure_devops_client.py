@@ -4,7 +4,7 @@ from datetime import datetime
 from cryptography.hazmat.primitives.asymmetric import rsa
 import base64
 
-from typing import Optional
+from typing import Any, Optional
 
 from azol.clients.oauth_http_client import OAuthHTTPClient
 from azol.constants import OAuthResourceIDs
@@ -32,7 +32,7 @@ class AzureDevOpsClient( OAuthHTTPClient ):
         """
         return HttpCall(self, path, next_link_key="nextLink")
 
-    def get_agent_pools( self, org_name ):
+    def get_agent_pools( self, org_name: str ) -> list[Any]:
         '''
             Get all the agent pools that the current credential can read in the organization
 
@@ -49,7 +49,7 @@ class AzureDevOpsClient( OAuthHTTPClient ):
             .json()
         )
 
-    def get_agents( self, org_name, agent_pool_id ):
+    def get_agents( self, org_name: str, agent_pool_id: str ) -> list[Any]:
         '''
             Get all the agents in an agent pool
 
@@ -72,7 +72,7 @@ class AzureDevOpsClient( OAuthHTTPClient ):
             .json()
         )
 
-    def get_service_endpoint_types( self, org_name ):
+    def get_service_endpoint_types( self, org_name: str ) -> list[Any]:
         '''
             Get all the current service connection types
 
@@ -89,7 +89,7 @@ class AzureDevOpsClient( OAuthHTTPClient ):
             .json()
         )
 
-    def create_agent(self, org_name, pool_id, name):
+    def create_agent(self, org_name: str, pool_id: str, name: str) -> dict[str, Any]:
         '''
             Create a new devops agent in the specified pool.
 
@@ -108,7 +108,7 @@ class AzureDevOpsClient( OAuthHTTPClient ):
                 and rsa_parameters is the base64 encoded rsa parameters used to create the agent.
         '''
 
-        def get_b64encoded_int_bytes(integer):
+        def get_b64encoded_int_bytes(integer) -> list[Any]:
             num_bytes = (integer.bit_length() + 7) // 8
             byte_representation = integer.to_bytes(num_bytes, byteorder='big')
             return base64.b64encode(byte_representation).decode()
@@ -171,7 +171,7 @@ class AzureDevOpsClient( OAuthHTTPClient ):
         )
         return (response_data, rsa_params)
 
-    def get_service_connection_role_assignments(self, org_name, project_id, endpoint_id):
+    def get_service_connection_role_assignments(self, org_name: str, project_id: str, endpoint_id: str) -> list[Any]:
         """
             Get all role assignments on a service connection(endpoint).
 
@@ -204,7 +204,7 @@ class AzureDevOpsClient( OAuthHTTPClient ):
             .values()
         )
 
-    def get_repositories( self, org_name, project_name ):
+    def get_repositories( self, org_name: str, project_name: str ) -> list[Any]:
         '''
             Get all repositories in the project
 
@@ -223,7 +223,7 @@ class AzureDevOpsClient( OAuthHTTPClient ):
             .json()
         )
 
-    def get_repository( self, org_name, project_name, repository_id ):
+    def get_repository( self, org_name: str, project_name: str, repository_id: str ) -> list[Any]:
         '''
             Get a devOps repository
 
@@ -247,7 +247,7 @@ class AzureDevOpsClient( OAuthHTTPClient ):
         )
 
 
-    def get_pipelines( self, org_name, project_name ):
+    def get_pipelines( self, org_name: str, project_name: str ) -> list[Any]:
         '''
             Get all devOps pipelines
 
@@ -266,7 +266,7 @@ class AzureDevOpsClient( OAuthHTTPClient ):
             .json()
         )
 
-    def get_pipeline( self, org_name, project_name, pipeline_id ):
+    def get_pipeline( self, org_name: str, project_name: str, pipeline_id: str ) -> list[Any]:
         '''
             Get a devOps pipeline
 
@@ -287,7 +287,7 @@ class AzureDevOpsClient( OAuthHTTPClient ):
             .json()
         )
 
-    def get_allowed_pipelines( self, org_name, project_name, endpoint_id ):
+    def get_allowed_pipelines( self, org_name: str, project_name: str, endpoint_id: str ) -> list[Any]:
         """
             Get all pipelines that are authorized to use a service connection.
 
@@ -315,7 +315,7 @@ class AzureDevOpsClient( OAuthHTTPClient ):
             .json()
         )
 
-    def get_service_connection( self, org_name, project_name, endpoint_id ):
+    def get_service_connection( self, org_name: str, project_name: str, endpoint_id: str ) -> list[Any]:
         """
             Get a service connections
 
@@ -342,7 +342,7 @@ class AzureDevOpsClient( OAuthHTTPClient ):
             .json()
         )
 
-    def try_download_permissions_report( self, report_url ):
+    def try_download_permissions_report( self, report_url: str ) -> Any:
         """
             Try to download a permissions report, or return None if it is not ready
 
@@ -369,7 +369,7 @@ class AzureDevOpsClient( OAuthHTTPClient ):
             raise exception_from_response(result.response)
         return result.json()
 
-    def create_permission_report( self, org_name, resource_id, resource_type ):
+    def create_permission_report( self, org_name: str, resource_id: str, resource_type ) -> dict[str, Any]:
         """
             Create a permissions report for the resource id and resource types.
             https://learn.microsoft.com/en-us/rest/api/azure/devops/permissionsreport/
@@ -410,7 +410,7 @@ class AzureDevOpsClient( OAuthHTTPClient ):
         )
 
 
-    def get_service_connections( self, org_name, project_name ):
+    def get_service_connections( self, org_name: str, project_name: str ) -> list[Any]:
         """
             Get all service connections in a project
 
@@ -429,7 +429,7 @@ class AzureDevOpsClient( OAuthHTTPClient ):
             .values()
         )
 
-    def get_all_service_connections( self, org_name ):
+    def get_all_service_connections( self, org_name: str ) -> list[Any]:
         """
             Get all service connections in an organization
 
@@ -450,7 +450,7 @@ class AzureDevOpsClient( OAuthHTTPClient ):
                 results[project["name"]].append(sc)
         return results
 
-    def get_projects( self, org_name ):
+    def get_projects( self, org_name: str ) -> list[Any]:
         """Get all projects that the current logged in credential has access to
         
             Args:
@@ -466,7 +466,7 @@ class AzureDevOpsClient( OAuthHTTPClient ):
             .values()
         )
 
-    def get_connection_data( self, org_name ):
+    def get_connection_data( self, org_name: str ) -> list[Any]:
         """
             Get the currently logged on user's information from the /connectionData endpoint
 
@@ -483,7 +483,7 @@ class AzureDevOpsClient( OAuthHTTPClient ):
             .json()
         )
 
-    def get_self(self):
+    def get_self(self) -> list[Any]:
         """
             Get the currently logged on user's information from the /User endpoint
 
@@ -498,7 +498,7 @@ class AzureDevOpsClient( OAuthHTTPClient ):
             .json()
         )
     
-    def get_profile(self):
+    def get_profile(self) -> list[Any]:
         """
             Get the currently logged on user's profiles from the /profiles/me endpoint
 
@@ -514,7 +514,7 @@ class AzureDevOpsClient( OAuthHTTPClient ):
         )
 
 
-    def get_organizations(self):
+    def get_organizations(self) -> list[Any]:
         """Get all organizations that the current logged in credential has access to
         
             Args:

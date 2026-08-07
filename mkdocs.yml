@@ -1,9 +1,28 @@
 site_name: azol
 site_description: A python-based pentesting library for Azure and Entra ID
-repo_url: https://github.com/cdburkard/azol
+site_url: https://codyburkard-private.github.io/azol/
+repo_url: https://github.com/codyburkard-private/azol
+repo_name: codyburkard-private/azol
 
 theme:
   name: material
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - content.code.copy
+    - search.suggest
+  palette:
+    - scheme: default
+      primary: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
 
 plugins:
   - search
@@ -16,14 +35,58 @@ plugins:
             show_source: true
             members_order: source
             merge_init_into_class: true
+            show_signature_annotations: true
+            separate_signature: true
+            show_signature_type_parameters: true
+            annotations_path: source
+            signature_crossrefs: true
+            docstring_section_style: table
+            filters:
+              - "!^_"
 
 nav:
   - Home: index.md
-  - Clients:
-      - GraphClient usage: clients/graph.md
+  - Getting started:
+      - Installation: guides/install.md
+      - Quickstart: guides/quickstart.md
+      - Authentication: guides/auth.md
+      - HTTP & errors: guides/http-and-errors.md
+  - Guides:
+      - GraphClient: clients/graph.md
+      - ArmClient: clients/arm.md
+      - Key Vault: clients/keyvault.md
+      - Azure DevOps: clients/devops.md
+      - Kudu / App Service: clients/kudu.md
+      - Data Factory: clients/datafactory.md
+      - Easy Auth utils: guides/easy-auth.md
   - Reference:
-      - GraphClient: reference/graph_client.md
+      - Package overview: reference/azol.md
+      - Clients:
+          - OAuthHTTPClient: reference/clients/oauth_http_client.md
+          - GraphClient: reference/clients/graph_client.md
+          - ArmClient: reference/clients/arm_client.md
+          - KeyVaultClient: reference/clients/key_vault_client.md
+          - AzureDevOpsClient: reference/clients/azure_devops_client.md
+          - AzureDevOpsAgentClient: reference/clients/devops_agent_client.md
+          - KuduClient: reference/clients/kudu_client.md
+          - DataFactoryClient: reference/clients/datafactory_client.md
+          - Graph OData helpers: reference/clients/odata.md
+          - ARM helpers: reference/clients/arm_helpers.md
+      - Credentials: reference/credentials.md
+      - Providers: reference/providers.md
+      - HTTP: reference/http.md
+      - Caches: reference/caches.md
+      - Services: reference/services.md
+      - Models: reference/models.md
+      - Utils: reference/utils.md
+      - Constants: reference/constants.md
 
 markdown_extensions:
   - admonition
+  - pymdownx.details
   - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - tables
+  - toc:
+      permalink: true

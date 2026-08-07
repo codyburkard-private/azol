@@ -1,4 +1,5 @@
 """Module that contains functions that are useful when working with Entra ID and Azure"""
+from typing import Any
 import logging
 import json
 import requests
@@ -23,7 +24,7 @@ def start_azure_portal_login(*args):
     )
     return init_params
 
-def end_azure_portal_login(sp_init_args, code, state, id_token):
+def end_azure_portal_login(sp_init_args, code, state, id_token) -> Any:
     data={
         "state": state,
         "code": code,

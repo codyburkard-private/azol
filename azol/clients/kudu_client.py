@@ -1,5 +1,6 @@
 """A module containing a client for interacting with the Kudu API.
 """
+from typing import Any
 from html.parser import HTMLParser
 
 from azol.clients.oauth_http_client import OAuthHTTPClient
@@ -14,20 +15,20 @@ class SCMEnvVarHTMLParser(HTMLParser):
         self._env_variables = {}
         self.new_data=''
 
-    def get_env_variables(self):
+    def get_env_variables(self) -> list[Any]:
         return self._env_variables
 
-    def handle_starttag(self, tag, attrs):
+    def handle_starttag(self, tag, attrs) -> Any:
         if tag == "li":
             self.new_data=''
 
-    def handle_endtag(self, tag):
+    def handle_endtag(self, tag) -> Any:
         if tag == "li":
             key, val = self.new_data.split( " = " )
             self._env_variables[key] = val
             self.new_data=''
 
-    def handle_data(self, data):
+    def handle_data(self, data) -> Any:
         self.new_data = data
 
 
@@ -46,7 +47,7 @@ class KuduClient( OAuthHTTPClient ):
         """
         return HttpCall(self, path, next_link_key=None)
 
-    def get_env_variables(self):
+    def get_env_variables(self) -> list[Any]:
         response = self.call("/Env").get().response
         
         # Get the index of the beginning of the environment variables in HTML
@@ -63,22 +64,22 @@ class KuduClient( OAuthHTTPClient ):
 
         return parser.get_env_variables()
 
-    def get_processes(self):
+    def get_processes(self) -> list[Any]:
         return self.call("/api/processes").get().json()
 
-    def get_process(self, pid):
+    def get_process(self, pid: str | int) -> Any:
         return self.call(f"/api/processes/{pid}").get().json()
 
-    def get_process_dump(self, pid):
+    def get_process_dump(self, pid: str | int) -> bytes:
         return self.call(f"/api/processes/{pid}/dump").get().content
 
-    def ls(self, path):
+    def ls(self, path: str) -> Any:
         return self.call(f"/api/vfs/{path}").get().json()
 
-    def get_file(self, path):
+    def get_file(self, path: str) -> bytes:
         return self.call(f"/api/vfs/{path}").get().content
 
-    def command( self, command, directory=None ):
+    def command( self, command: str, directory: str | None = None ) -> Any:
         """Execute a command via the Kudu API.
         
         Returns:
@@ -94,7 +95,7 @@ class KuduClient( OAuthHTTPClient ):
             body["dir"]=directory
         return self.call("/api/command").body(body).post().json()
     
-    def get_settings( self ):
+    def get_settings( self ) -> list[Any]:
         """Get settings
         
         Returns:
@@ -105,7 +106,7 @@ class KuduClient( OAuthHTTPClient ):
         """
         return self.call("/api/settings").get().json()
     
-    def get_setting( self, setting ):
+    def get_setting( self, setting ) -> list[Any]:
         """Get setting
         
         Returns:

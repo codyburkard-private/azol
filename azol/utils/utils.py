@@ -1,4 +1,5 @@
 """Module that contains functions that are useful when working with Entra ID and Azure"""
+from typing import Any
 import logging
 import json
 import base64
@@ -37,7 +38,7 @@ class AzolX509:
     private_cert: str
 
 
-def string_between(whole_string, start_string, end_string, include_start=False):
+def string_between(whole_string, start_string, end_string, include_start: bool=False) -> Any:
     i=whole_string.index(start_string)
     z=whole_string[i:].index(end_string)+i
     if not include_start:
@@ -45,7 +46,7 @@ def string_between(whole_string, start_string, end_string, include_start=False):
     sub_string=whole_string[i:z]
     return sub_string
 
-def get_tenant_id( tenant_name ):
+def get_tenant_id( tenant_name: str ) -> str | None:
     """
         Call the openid-configuration of a domain name to check if it exists in Entra ID as a tenant
 
@@ -62,7 +63,7 @@ def get_tenant_id( tenant_name ):
     tenant_id = issuer.split('/')[3]
     return tenant_id
 
-def parse_jwt( token ):
+def parse_jwt( token: str ) -> tuple:
     """
         parse the jwt and return an object for each piece
 
@@ -71,7 +72,7 @@ def parse_jwt( token ):
 
         Returns: a tuple ( <dict>header, <dict>data, <string>signature )
     """
-    def fix_padding( raw_string ):
+    def fix_padding( raw_string ) -> Any:
         while True:
             if len(raw_string) % 4 == 0:
                 break
@@ -87,7 +88,7 @@ def parse_jwt( token ):
     data = json.loads(base64.urlsafe_b64decode(datab64).decode())
     return header, data, signatureb64
 
-def is_token_expired( token, padding_time=0 ):
+def is_token_expired( token: str, padding_time: int=0 ) -> bool:
     """
         Check if the current access token is expired. The credential
         object caches access tokens in memory. This method will check
@@ -109,10 +110,10 @@ def is_token_expired( token, padding_time=0 ):
         return True
     return False
 
-def create_x509_cert(common_name, password=None, country_name=None, state=None, locality=None,
-                     org_name=None, private_key_size=2048, subject_alternative_name=None,
-                     cert_name="azol_cert", private_key_public_exponent=65537,
-                     cert_valid_days=365):
+def create_x509_cert(common_name: str, password: Any | None=None, country_name: str | None=None, state: Any | None=None, locality: Any | None=None,
+                     org_name: str | None=None, private_key_size=2048, subject_alternative_name: str | None=None,
+                     cert_name: str="azol_cert", private_key_public_exponent=65537,
+                     cert_valid_days=365) -> dict[str, Any]:
 
     private_key = rsa.generate_private_key(
         public_exponent=private_key_public_exponent,
@@ -168,7 +169,7 @@ def create_x509_cert(common_name, password=None, country_name=None, state=None, 
     )
     return res
 
-def decrypt_easy_auth_token(encrypted_b64_data, hex_key):
+def decrypt_easy_auth_token(encrypted_b64_data: str, hex_key: str) -> dict[str, Any]:
     key = bytes.fromhex(hex_key)
     encrypted_token_and_iv_bytes = base64.b64decode(encrypted_b64_data)
     iv = encrypted_token_and_iv_bytes[0:16]
@@ -182,7 +183,7 @@ def decrypt_easy_auth_token(encrypted_b64_data, hex_key):
     token_plaintext_json_contents = json.loads(token_contents)
     return token_plaintext_json_contents
 
-def get_easy_auth_user_tokens(zumo_token, site_url):
+def get_easy_auth_user_tokens(zumo_token, site_url: str) -> list[Any]:
     """
         Use an X-ZUMO-TOKEN to collect user tokens from Easy Auth
 
@@ -197,11 +198,11 @@ def get_easy_auth_user_tokens(zumo_token, site_url):
 
     return res.json()
 
-def create_easy_auth_subject(identifier):
+def create_easy_auth_subject(identifier) -> dict[str, Any]:
     return str(uuid.UUID(bytes_le=hashlib.md5(identifier.encode()).digest())).replace("-", "")
 
-def create_signed_easy_auth_token(site_url, signing_key_hex, user_object_id, user_principal_name,
-                                  valid_days=7, idp="aad"):
+def create_signed_easy_auth_token(site_url: str, signing_key_hex: str, user_object_id: str, user_principal_name: str,
+                                  valid_days: int=7, idp: str="aad") -> dict[str, Any]:
     """
         Create a signed token that may be used against an easy auth-authenticated app service
         or function, for the provided user.
@@ -265,7 +266,7 @@ def create_signed_easy_auth_token(site_url, signing_key_hex, user_object_id, use
     jwt=body_and_header + b"." + signature
     return jwt.decode()
 
-def get_strings_from_bytes(raw_bytes, min_length=3):
+def get_strings_from_bytes(raw_bytes: bytes, min_length: int=3) -> list[str]:
     ascii_string = ''
     current_string = ''
     for b in raw_bytes:

@@ -7,6 +7,7 @@ Typical usage example:
     users=client.get_all_users()
 
 """
+from typing import Any
 import logging
 
 from azol.clients.arm import ArmCall
@@ -44,7 +45,7 @@ class ArmClient( OAuthHTTPClient ):
         """
         return ArmCall(self, path)
 
-    def get_tenants( self ):
+    def get_tenants( self ) -> list[Any]:
         """Get user's tenants.
         
         Get tenants that the client's credential has access to.
@@ -59,7 +60,7 @@ class ArmClient( OAuthHTTPClient ):
         """
         return self.call("/tenants").api_version("2020-01-01").get().values()
 
-    def get_management_groups( self, expand=False ):
+    def get_management_groups( self, expand: bool=False ) -> list[Any]:
         """Get management groups
         
         Get all management groups that the current credentials have access to.
@@ -88,7 +89,7 @@ class ArmClient( OAuthHTTPClient ):
         management_group_ids = [  mgroup[ "id" ] for mgroup in management_group_raw_list ]
         return management_group_ids
 
-    def get_subscriptions( self, expand=False ):
+    def get_subscriptions( self, expand: bool=False ) -> list[Any]:
         """Get subscriptions
         
         Get all subscriptions that the current credentials have access to.
@@ -114,7 +115,7 @@ class ArmClient( OAuthHTTPClient ):
         subscription_ids = [ subDict[ 'subscriptionId' ] for subDict in subscriptions_raw_list ]
         return subscription_ids
 
-    def get_resource_groups( self, subscriptions=None ):
+    def get_resource_groups( self, subscriptions: Any | None=None ) -> list[Any]:
         """Get resource groups
         
         Get all resource groups that the current credentials have access to.
@@ -150,7 +151,7 @@ class ArmClient( OAuthHTTPClient ):
         resource_group_ids = [ rgDict[ 'id' ] for rgDict in resource_groups ]
         return resource_group_ids
 
-    def get_providers( self ):
+    def get_providers( self ) -> list[Any]:
         """Get azure providers
         
         Get ARM providers and api versions (/providers API).
@@ -179,7 +180,7 @@ class ArmClient( OAuthHTTPClient ):
                           " provider version auto-resolution will fail")     
             raise AzolArmUnsupportedException() from e
 
-    def get_resource( self, resource_id, api_version=None ):
+    def get_resource( self, resource_id: str, api_version: str | None=None ) -> dict[str, Any]:
         """Get an individual resource.
         
         Get the resource properties of a specific resource.
@@ -217,7 +218,7 @@ class ArmClient( OAuthHTTPClient ):
         new_resource = self._deserialize_resource(resource)
         return new_resource
 
-    def get_resources( self, resource_type=None, subscriptions=None, ignore_subscriptions=None ):
+    def get_resources( self, resource_type: Any | None=None, subscriptions: Any | None=None, ignore_subscriptions: Any | None=None ) -> list[Any]:
         """Get all resources.
         
         Get all resources that the client's credential has access to.
@@ -270,7 +271,7 @@ class ArmClient( OAuthHTTPClient ):
 
         return resources
 
-    def get_resource_ids( self, resource_type=None, subscriptions=None, ignore_subscriptions=None ):
+    def get_resource_ids( self, resource_type: Any | None=None, subscriptions: Any | None=None, ignore_subscriptions: Any | None=None ) -> list[Any]:
         """Get all resource ids.
         
         Get the resource ids of all resources the client has access to
@@ -314,7 +315,7 @@ class ArmClient( OAuthHTTPClient ):
         resources_abreviated_list = [ rDict[ 'id' ] for rDict in resources ]
         return resources_abreviated_list
 
-    def get_rbac_role_definition_map( self ):
+    def get_rbac_role_definition_map( self ) -> list[Any]:
         """Get a dict of role definition ids mapped to names
         
         Enumerate all role definitions, and return a dictionary mapping all ids to names.
@@ -371,7 +372,7 @@ class ArmClient( OAuthHTTPClient ):
 
         return arm_roles_map
 
-    def get_own_rbac_role_assignments(self):
+    def get_own_rbac_role_assignments(self) -> list[Any]:
         """
             Get all RBAC role assignments of the current identity
 
@@ -405,7 +406,7 @@ class ArmClient( OAuthHTTPClient ):
 
         return final
 
-    def get_rbac_role_assignments(self):
+    def get_rbac_role_assignments(self) -> list[Any]:
         """Get all RBAC role assignments
         
         Get all RBAC role assignments at all scopes in the tenant,
@@ -472,7 +473,7 @@ class ArmClient( OAuthHTTPClient ):
 
         return generic_resource_list
 
-    def get_rbac_assignments_at_scope( self, scope ):
+    def get_rbac_assignments_at_scope( self, scope: str ) -> list[Any]:
         """Get all RBAC role assignments at a given scope
         
         If principal_lookup_table is populated in the client, it will be used to annotate the
@@ -515,7 +516,7 @@ class ArmClient( OAuthHTTPClient ):
 
         return generic_resource_list
 
-    def elevate_access_as_global_admin( self ):
+    def elevate_access_as_global_admin( self ) -> Any:
         """Elevate access to Azure as Global Administrator.
         
         Toggle elevated access to Azure as a global administrator.
@@ -541,7 +542,7 @@ class ArmClient( OAuthHTTPClient ):
             .json()
         )
 
-    def get_logic_app_runs( self, logic_app_resource_id ):
+    def get_logic_app_runs( self, logic_app_resource_id: str ) -> list[Any]:
         """Get logic app run.
         
         Get metadata of logic app runs for a specific logic app
@@ -569,7 +570,7 @@ class ArmClient( OAuthHTTPClient ):
 
         return deserialized_resource_list
 
-    def get_logic_app_run_actions( self, logic_app_run_resource_id ):
+    def get_logic_app_run_actions( self, logic_app_run_resource_id: str ) -> list[Any]:
         """Get logic app run actions.
         
         Get all run actions for a single logic app
@@ -591,7 +592,7 @@ class ArmClient( OAuthHTTPClient ):
             .json()
         )
 
-    def get_logic_app( self, logic_app_resource_id ):
+    def get_logic_app( self, logic_app_resource_id: str ) -> list[Any]:
         """Get a logic app.
         
         Get a logic app resource's properties
@@ -615,7 +616,7 @@ class ArmClient( OAuthHTTPClient ):
         new_resource = self._deserialize_resource(resource)
         return new_resource
 
-    def get_logic_app_versions( self, logic_app_resource_id ):
+    def get_logic_app_versions( self, logic_app_resource_id: str ) -> list[Any]:
         """Get a logic app's versions.
         
         Get a logic app resource's versions
@@ -637,7 +638,7 @@ class ArmClient( OAuthHTTPClient ):
             .json()
         )
 
-    def get_runbooks( self, automation_account_id ):
+    def get_runbooks( self, automation_account_id: str ) -> list[Any]:
         """Get runbook metadata in an automation account.
         
         Get all runbook objects in an automation account.
@@ -661,7 +662,7 @@ class ArmClient( OAuthHTTPClient ):
             .values()
         )
 
-    def get_runbook_content( self, automation_account_runbook_id ):
+    def get_runbook_content( self, automation_account_runbook_id: str ) -> list[Any]:
         """Get runbook content.
         
         Get the contents of a runbook.
@@ -685,7 +686,7 @@ class ArmClient( OAuthHTTPClient ):
             .response
         )
 
-    def get_runbook_draft_content( self, automation_account_runbook_id ):
+    def get_runbook_draft_content( self, automation_account_runbook_id: str ) -> list[Any]:
         """Get runbook draft content.
         
         Get the draft contents of a runbook.
@@ -709,7 +710,7 @@ class ArmClient( OAuthHTTPClient ):
             .response
         )
 
-    def get_automation_webhooks( self, automation_account_id ):
+    def get_automation_webhooks( self, automation_account_id: str ) -> list[Any]:
         """Get automation account webhooks.
         
         Get the webhooks in an automation account.
@@ -732,7 +733,7 @@ class ArmClient( OAuthHTTPClient ):
             .values()
         )
 
-    def get_automation_variables( self, automation_account_id ):
+    def get_automation_variables( self, automation_account_id: str ) -> list[Any]:
         """Get automation account variables.
         
         Get the variables in an automation account.
@@ -755,7 +756,7 @@ class ArmClient( OAuthHTTPClient ):
             .values()
         )
 
-    def get_automation_jobs( self, automation_account_runbook_id ):
+    def get_automation_jobs( self, automation_account_runbook_id: str ) -> list[Any]:
         """Get automation account runbook jobs.
         
         Get metadata on the jobs that have been run for an Automation Account runbook
@@ -778,7 +779,7 @@ class ArmClient( OAuthHTTPClient ):
             .values()
         )
 
-    def get_automation_job_output( self, automation_account_job_id ):
+    def get_automation_job_output( self, automation_account_job_id: str ) -> list[Any]:
         """Get automation account runbook job output.
         
         Get the job output of a specific automation account job
@@ -803,7 +804,7 @@ class ArmClient( OAuthHTTPClient ):
             .text
         )
 
-    def get_deployment_history( self, scope ):
+    def get_deployment_history( self, scope: str ) -> list[Any]:
         """Get deployment history at a given scope
         
         Args:
@@ -823,7 +824,7 @@ class ArmClient( OAuthHTTPClient ):
             .json()
         )
 
-    def get_current_user_pim_eligibility(self, scope):
+    def get_current_user_pim_eligibility(self, scope: str) -> list[Any]:
         return (
             self.call(
                 f"{scope}/providers/Microsoft.Authorization/"
@@ -835,7 +836,7 @@ class ArmClient( OAuthHTTPClient ):
             .json()
         )
 
-    def get_descendants( self, management_group ):
+    def get_descendants( self, management_group: str ) -> list[Any]:
         """Get direct descendants of a management group.
 
         This function will return subscriptions or management groups that are nested under
@@ -861,7 +862,7 @@ class ArmClient( OAuthHTTPClient ):
             .values()
         )
     
-    def get_app_settings( self, resource_id ):
+    def get_app_settings( self, resource_id: str ) -> list[Any]:
         """
             Get a dictionary containing key-values for all app service app settings.
         """
@@ -873,7 +874,7 @@ class ArmClient( OAuthHTTPClient ):
         )
         return settings
 
-    def get_app_service_processes(self, resource_id):
+    def get_app_service_processes(self, resource_id: str) -> list[Any]:
         """
            Get all processes running on the app service.
         """
@@ -884,7 +885,7 @@ class ArmClient( OAuthHTTPClient ):
             .values()
         )
 
-    def get_app_service_environment_variables(self, resource_id):
+    def get_app_service_environment_variables(self, resource_id: str) -> list[Any]:
         """
            Get environment variales of the default process for an app service
            of function. Uses the ARM API. Only works for Windows as of may 2025 -
@@ -904,7 +905,7 @@ class ArmClient( OAuthHTTPClient ):
         environment_variables = process["properties"]["environment_variables"]
         return environment_variables        
 
-    def get_app_service_process(self, resource_id, process_id):
+    def get_app_service_process(self, resource_id: str, process_id: str) -> list[Any]:
         """
            Get details about the process running on the app service.
 
@@ -918,7 +919,7 @@ class ArmClient( OAuthHTTPClient ):
             .json()
         )
 
-    def get_app_service_process_dump(self, resource_id, process_id):
+    def get_app_service_process_dump(self, resource_id: str, process_id: str) -> list[Any]:
         """
             Call the ARM API to dump the process memory on an app service
 
@@ -933,7 +934,7 @@ class ArmClient( OAuthHTTPClient ):
             .content
         )
 
-    def get_app_service(self, resource_id):
+    def get_app_service(self, resource_id: str) -> list[Any]:
         """
             Get a specific app service, as well as its configurations and auth settings.
         """
@@ -959,7 +960,7 @@ class ArmClient( OAuthHTTPClient ):
         app_service.properties["config"]["authSettingsV2"] = settings
         return app_service
 
-    def get_app_services_with_easy_auth(self):
+    def get_app_services_with_easy_auth(self) -> list[Any]:
         """
             Get all app services, as well as their configurations and auth settings. Only
             return the app services with easy auth
@@ -971,7 +972,7 @@ class ArmClient( OAuthHTTPClient ):
                 easy_auth_as.append(app)
         return easy_auth_as
 
-    def get_functions_with_easy_auth(self):
+    def get_functions_with_easy_auth(self) -> list[Any]:
         """
             Get all functions, as well as their configurations and auth settings. Only
             return the functions with easy auth
@@ -983,7 +984,7 @@ class ArmClient( OAuthHTTPClient ):
                 funcs.append(func)
         return funcs
 
-    def get_functions(self):
+    def get_functions(self) -> list[Any]:
         """
             Get all functions, as well as their configurations and auth settings.
         """
@@ -1023,7 +1024,7 @@ class ArmClient( OAuthHTTPClient ):
             app_service.properties["config"]["authSettingsV2"] = settings
         return app_services
 
-    def get_app_services(self):
+    def get_app_services(self) -> list[Any]:
         """
             Get all app services, as well as their configurations and auth settings.
         """
@@ -1063,7 +1064,7 @@ class ArmClient( OAuthHTTPClient ):
             app_service.properties["config"]["authSettingsV2"] = settings
         return app_services
 
-    def post( self, path, api_version, data ):
+    def post( self, path: str, api_version: str, data: Any ) -> Any:
         """Send a POST request to ARM, and return the raw results
 
         Calls ARM at the path specified, and returns the raw deserialized results.
@@ -1084,7 +1085,7 @@ class ArmClient( OAuthHTTPClient ):
             self.call(path).api_version(api_version).body(data).post().json()
         )
 
-    def put( self, path, api_version, data ):
+    def put( self, path: str, api_version: str, data: Any ) -> Any:
         """Send a PUT request to ARM, and return the raw results
 
         Calls ARM at the path specified, and returns the raw deserialized results.
@@ -1105,7 +1106,7 @@ class ArmClient( OAuthHTTPClient ):
             self.call(path).api_version(api_version).body(data).put().json()
         )
 
-    def patch( self, path, api_version, data ):
+    def patch( self, path: str, api_version: str, data: Any ) -> Any:
         """Send a PATCH request to ARM, and return the raw results
 
         Calls ARM at the path specified, and returns the raw deserialized results.
@@ -1126,7 +1127,7 @@ class ArmClient( OAuthHTTPClient ):
             self.call(path).api_version(api_version).body(data).patch().json()
         )
 
-    def get( self, path, api_version=None ):
+    def get( self, path: str, api_version: str | None=None ) -> Any:
         """Send a GET request to ARM, and return the raw results
 
         Calls ARM at the path specified, and returns the raw deserialized results.
@@ -1164,7 +1165,7 @@ class ArmClient( OAuthHTTPClient ):
         api_version = latest
         return self.call(path).api_version(api_version).get().json()
 
-    def delete( self, path ):
+    def delete( self, path: str ) -> Any:
         """Make a DELETE request to a specific API path within the ARM API.
 
         Args:

@@ -1,4 +1,5 @@
 """Module containing a parent class for an azol http client"""
+from typing import Any
 import uuid
 import logging
 from azol.utils import is_token_expired, get_tenant_id, parse_jwt
@@ -13,10 +14,10 @@ class OAuthHTTPClient:
         Base class for OAuth HTTP client objects.
     """
 
-    def __init__( self, cred, oauth_resource, base_url=None, redirect_uri=None,
-                  tenant=None, azol_id=None, oauth_flow=None, secrets_provider=None,
-                  use_persistent_cache=True, auto_refresh=True, scopes=[], use_token_broker=False,
-                  useragent=UserAgents.Windows_Edge, session=None, request_timeout=DEFAULT_TIMEOUT):
+    def __init__( self, cred: Any, oauth_resource: str, base_url: str | None=None, redirect_uri: str | None=None,
+                  tenant: str | None=None, azol_id: str | None=None, oauth_flow: str | None=None, secrets_provider: Any=None,
+                  use_persistent_cache: bool=True, auto_refresh: bool=True, scopes: Any=[], use_token_broker: bool=False,
+                  useragent: str=UserAgents.Windows_Edge, session: Any=None, request_timeout=DEFAULT_TIMEOUT):
         if tenant is None:
             if cred.credentialType != "user":
                 raise Exception("tenant must be specified if credential is not of type 'user'")
@@ -80,19 +81,19 @@ class OAuthHTTPClient:
             azol_id = str(uuid.uuid4())
         self._id=azol_id
 
-    def __enter__(self):
+    def __enter__(self) -> Any:
         return self
 
-    def __exit__(self, exc_type, exc, tb):
+    def __exit__(self, exc_type, exc, tb) -> Any:
         self.close()
 
-    def close(self):
+    def close(self) -> None:
         """Close the underlying ``requests.Session`` if this client owns it."""
         if getattr(self, "_owns_session", False) and getattr(self, "_session", None) is not None:
             self._session.close()
             self._session = None
 
-    def get_token_claims( self ):
+    def get_token_claims( self ) -> dict[str, Any]:
         """Get claims in the current token
 
         parses the cached token and returns the body
@@ -110,7 +111,7 @@ class OAuthHTTPClient:
 
         return body
 
-    def switch_tenant(self, tenant):
+    def switch_tenant(self, tenant: str) -> Any:
         """
             Switch the tenant of the client.
             This nullifies the current token of the client, and subsequent requests
@@ -131,7 +132,7 @@ class OAuthHTTPClient:
         self.token_service.set_tenant(tenant)
         self._tenant=tenant
 
-    def switch_scope(self, scopes, default, profile, offline_access, openid):
+    def switch_scope(self, scopes: Any, default, profile, offline_access, openid) -> Any:
         """
             Change the scope of the OAuth client. This will cause a new scope to be requested
             on subsequent tokens, and will nullify the current token.
@@ -155,7 +156,7 @@ class OAuthHTTPClient:
         self.offline_access_scope=offline_access
         self.openid_scope=openid
 
-    def get_id(self):
+    def get_id(self) -> list[Any]:
         """
             Get the azol ID of the client
 
@@ -164,7 +165,7 @@ class OAuthHTTPClient:
         """
         return self._id
 
-    def refresh_token( self ):
+    def refresh_token( self ) -> Any:
         """
             force the token cache to use the refresh token in the current credential to
             generate a new access token
@@ -174,7 +175,7 @@ class OAuthHTTPClient:
         """
         self._current_token = self.token_service.refresh_token()
 
-    def get_current_refresh_token( self ):
+    def get_current_refresh_token( self ) -> list[Any]:
         """
             Get the current refresh token in use by the client
 
@@ -184,7 +185,7 @@ class OAuthHTTPClient:
         token=self.token_service.get_refresh_token_if_exists()
         return token
 
-    def fetch_token(self):
+    def fetch_token(self) -> Any:
         """
             Fetch a new token. Save the token as the current token to be used by the client
 
@@ -201,7 +202,7 @@ class OAuthHTTPClient:
         self._current_token = access_token
         return None
 
-    def get_current_token(self):
+    def get_current_token(self) -> list[Any]:
         """
             Get the current token being used by the client
 
@@ -213,10 +214,10 @@ class OAuthHTTPClient:
 
         return self._current_token
 
-    def get_client_id( self ):
+    def get_client_id( self ) -> list[Any]:
         return self.token_service.get_client_id()
 
-    def switch_client(self, client_id):
+    def switch_client(self, client_id: str) -> Any:
         """
             Switch the oauth client used by the HTTP Client. Used to abuse FOCI functionality.
 
@@ -232,7 +233,7 @@ class OAuthHTTPClient:
         self.token_service.switch_client(client_id)
 
     @classmethod
-    def from_client(cls, client, *args, **kwargs):
+    def from_client(cls, client, *args, **kwargs) -> Any:
         """
             Generate a new HTTP Client with a different OAuth Resource, using the current client class.
 
@@ -255,7 +256,7 @@ class OAuthHTTPClient:
         newClass = cls(*args, tenant=client._tenant, cred=user, **kwargs)
         return newClass
 
-    def refresh_to_new_resource(self, oauth_http_client_class):
+    def refresh_to_new_resource(self, oauth_http_client_class) -> Any:
         """
             Generate a new HTTP Client with a different OAuth Resource, using the current token.
 
@@ -303,7 +304,7 @@ class OAuthHTTPClient:
 
         return self.get_current_token()
 
-    def request(self, exception_cls=None):
+    def request(self, exception_cls: Any=None) -> Any:
         """Return a fluent OAuth request builder bound to this client's session.
 
         Args:
@@ -373,7 +374,7 @@ class OAuthHTTPClient:
         )
         return http_request.execute()
 
-    def get( self, path, headers=None, query_parameters=None ):
+    def get( self, path: str, headers: Any=None, query_parameters: Any | None=None ) -> Any:
         """Make a get request .
 
         Args:
@@ -387,7 +388,7 @@ class OAuthHTTPClient:
         response = self._send_request(  path, headers=headers, query_parameters=query_parameters, method="GET" )
         return response
 
-    def post( self, path, headers=None, json=None, query_parameters=None ):
+    def post( self, path: str, headers: Any=None, json: Any | None=None, query_parameters: Any | None=None ) -> Any:
         """Make a get request .
 
         Args:

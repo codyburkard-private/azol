@@ -1,4 +1,5 @@
 """Module containing the DataFactoryClient class"""
+from typing import Any
 import uuid
 import logging
 import requests
@@ -14,7 +15,7 @@ class DataFactoryClient:
         An HTTP Client for the Internal DataFactory API
     """
 
-    def __init__( self, authentication_key, ir_node_id=None, spoofed_ir_name="Default" ):
+    def __init__( self, authentication_key, ir_node_id: str | None=None, spoofed_ir_name: str="Default" ):
         self.key=authentication_key
         self.dataFactory_hostname=None
         self.dataFactory_url=None
@@ -49,7 +50,7 @@ class DataFactoryClient:
         self.subscription_id=declarations_dict["PartitionId"]
         self.data_factory_id=declarations_dict["ExtendedProperties"]["DataFactoryId"]
         
-    def get_dataFactory_token(self):
+    def get_dataFactory_token(self) -> list[Any]:
         headers = {
             "Authorization": f"UserKey {self.user_key_encoded}",
             "Content-Type": "application/json"
@@ -61,7 +62,7 @@ class DataFactoryClient:
         data_factory_token = response.json()
         return data_factory_token
 
-    def get_managed_identity_token(self, oauth_resource):
+    def get_managed_identity_token(self, oauth_resource: str) -> list[Any]:
         """
             Get a managed identity token using the DataFactory key
             
@@ -94,7 +95,7 @@ class DataFactoryClient:
         token_response=response.json()
         return token_response["accessToken"]
 
-    def spoof_shir(self, poll_interval=3, job_callback=None):
+    def spoof_shir(self, poll_interval=3, job_callback: Any | None=None) -> Any:
         """
             Register a new self-hosted integration runtime(shir) with the data factory using the
             authentication key. Poll every 3 seconds for jobs. If a job comes in, either print it

@@ -1,4 +1,5 @@
 """A module containing an azol key vault http client"""
+from typing import Any
 from azol.clients.oauth_http_client import OAuthHTTPClient
 from azol.constants import KEYVAULTAPIVERSION, OAuthResourceIDs
 from azol.http import HttpCall
@@ -10,7 +11,7 @@ class KeyVaultClient( OAuthHTTPClient ):
         Works with all credential objects
     """
 
-    def __init__( self, key_vault_name, *args, **kwargs ):
+    def __init__( self, key_vault_name: str, *args, **kwargs ):
         key_vault_resource_id=OAuthResourceIDs.KeyVault
         kv_base_url=f"https://{key_vault_name}.vault.azure.net"
         super().__init__( oauth_resource=key_vault_resource_id,
@@ -24,7 +25,7 @@ class KeyVaultClient( OAuthHTTPClient ):
         """
         return HttpCall(self, path, next_link_key="nextLink")
 
-    def get_keys( self ):
+    def get_keys( self ) -> list[Any]:
         """Get all keys in the key vault.
 
         Get all keys from the key vault connected to this client,
@@ -43,7 +44,7 @@ class KeyVaultClient( OAuthHTTPClient ):
             .values()
         )
 
-    def get_secret( self, secret_name, secret_version=None ):
+    def get_secret( self, secret_name: str, secret_version: str | None=None ) -> list[Any]:
         """Get a secret from the key vault.
 
         Args:
@@ -68,7 +69,7 @@ class KeyVaultClient( OAuthHTTPClient ):
             .json()["value"]
         )
 
-    def get_secrets( self ):
+    def get_secrets( self ) -> list[Any]:
         """Get all secrets in the key vault.
 
         Get all secrets from the key vault connected to this client,
@@ -87,7 +88,7 @@ class KeyVaultClient( OAuthHTTPClient ):
             .values()
         )
 
-    def get_certificates( self ):
+    def get_certificates( self ) -> list[Any]:
         """Get all certificates in the key vault.
 
         Get all certificates from the key vault connected to this client,

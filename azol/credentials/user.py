@@ -1,4 +1,5 @@
 """A module containing the User credential class"""
+from typing import Any
 import logging
 
 from azol.constants import FOCIClients, known_client_redirect_uris
@@ -16,8 +17,8 @@ class User( EntraIdCredential ):
     credentialType="user"
     default_oauth_flow="device_code"
 
-    def __init__( self, username=None, refresh_token=None, ests=None,
-                 ests_persistent=None, client_id=FOCIClients.MicrosoftAzurePowershell,
+    def __init__( self, username: str | None=None, refresh_token: Any | None=None, ests: Any | None=None,
+                 ests_persistent: Any | None=None, client_id: str=FOCIClients.MicrosoftAzurePowershell,
                   *args, **kwargs ):
         """
             User objects always have a username, pasword and refresh token. 
@@ -51,7 +52,7 @@ class User( EntraIdCredential ):
 
         self._client_id=client_id
 
-    def username_is_known( self ):
+    def username_is_known( self ) -> bool:
         """
             Returns True if the username is set on the user object
     
@@ -59,20 +60,20 @@ class User( EntraIdCredential ):
         """
         return False if self._username is None else True
 
-    def get_client_id(self):
+    def get_client_id(self) -> list[Any]:
         return self._client_id
 
-    def has_ests(self):
+    def has_ests(self) -> Any:
         if self._ests is None and self._ests_persistent is None:
             return False
         return True
 
-    def has_refresh_token(self):
+    def has_refresh_token(self) -> Any:
         if self._refresh_token is None:
             return False
         return True
 
-    def get_ests(self):
+    def get_ests(self) -> list[Any]:
         """
             Get the user's ests and ests_persistent cookies
     
@@ -84,7 +85,7 @@ class User( EntraIdCredential ):
         )
         return cookies
 
-    def get_refresh_token(self):
+    def get_refresh_token(self) -> list[Any]:
         """
             Get the current refresh token of the user object
     
@@ -92,7 +93,7 @@ class User( EntraIdCredential ):
         """
         return self._refresh_token
 
-    def get_username( self ):
+    def get_username( self ) -> list[Any]:
         """
             Get the username of the user object
 
@@ -100,7 +101,7 @@ class User( EntraIdCredential ):
         """
         return self._username
 
-    def set_username( self, username ):
+    def set_username( self, username: str ) -> Any:
         """
             Set the username of the user object
 
