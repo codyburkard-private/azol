@@ -1,3 +1,35 @@
 [build-system]
-requires = ["setuptools>=42"]
+requires = ["setuptools>=61", "wheel"]
 build-backend = "setuptools.build_meta"
+
+[project]
+name = "azol"
+version = "0.6.0"
+description = "A python-based pentesting library for Azure and Entra ID"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [
+    { name = "Cody Burkard" },
+]
+urls = { Homepage = "https://github.com/cdburkard/azol" }
+dependencies = [
+    "requests==2.31.0",
+    "cryptography==50.0.0",
+    "pymsalruntime==0.20.6; platform_system == 'Windows'",
+    "dataclasses==0.6",
+]
+
+[project.optional-dependencies]
+docs = [
+    "mkdocs-material>=9.0",
+    "mkdocstrings[python]>=0.24",
+]
+dev = [
+    "build>=1.0",
+    "twine>=5.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["azol*"]
+exclude = ["tests*", "scripts*"]

@@ -8,6 +8,8 @@ Install the library using Python3 pip:
 
 ```pip install azol```
 
+For maintainers: see [`RELEASING.md`](RELEASING.md) for the tag-based PyPI release process.
+
 API docs (GraphClient reference) can be built with:
 
 ```bash

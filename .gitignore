@@ -13,4 +13,6 @@ site/
 .env.live
 .venv/
 *.egg-info/
+dist/
+build/
 
