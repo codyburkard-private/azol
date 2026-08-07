@@ -1,6 +1,7 @@
 from setuptools import setup, find_packages
 import os
 
+version = os.environ.get('BUILD_VERSION') or '0.0.0'
 
 readmeText=""
 with open("README.md", "r") as f:
