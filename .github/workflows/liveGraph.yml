@@ -4,6 +4,12 @@ on:
   push:
     branches:
       - live-test
+  pull_request:
+    branches:
+      - main
+  schedule:
+    # Nightly on default branch (main), 02:00 UTC
+    - cron: "0 2 * * *"
   workflow_dispatch:
     inputs:
       ensure:
@@ -11,7 +17,7 @@ on:
         type: boolean
         default: true
       reset:
-        description: Reset harness states before ensure (always on for push to live-test)
+        description: Reset harness states before ensure (always on for push/PR/schedule)
         type: boolean
         default: true
 
@@ -40,7 +46,7 @@ jobs:
         run: pip install -e .
 
       - name: Reset tenant states
-        if: ${{ github.event_name == 'push' || inputs.reset }}
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.reset }}
         env:
           AZOL_LIVE_TENANT: azoltest.onmicrosoft.com
           AZOL_LIVE_CLIENT_ID: ${{ vars.AZOL_LIVE_CLIENT_ID }}
