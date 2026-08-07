@@ -14,3 +14,7 @@ site/
 .venv/
 *.egg-info/
 
+# Live Graph harness manifest (object ids only; still local)
+tests/graph/live/.state.json
+
+
