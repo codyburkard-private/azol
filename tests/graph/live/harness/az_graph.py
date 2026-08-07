@@ -13,10 +13,14 @@ from graph.live.harness.az_auth import AzCliError, run_az
 from graph.live.harness.config import GRAPH_V1
 
 # Entra directory writes are eventually consistent across partitions.
-_CONSISTENCY_ATTEMPTS = 10
+_CONSISTENCY_ATTEMPTS = 15
 _CONSISTENCY_SLEEP_S = 2.0
 
 T = TypeVar("T")
+
+
+class ConsistencyPending(AzCliError):
+    """Resource exists but is not fully visible yet; safe to retry."""
 
 
 def _odata_eq(field: str, value: str) -> str:
@@ -25,6 +29,8 @@ def _odata_eq(field: str, value: str) -> str:
 
 
 def is_consistency_error(exc: BaseException) -> bool:
+    if isinstance(exc, ConsistencyPending):
+        return True
     detail = str(exc)
     markers = (
         "Request_ResourceNotFound",
@@ -52,7 +58,9 @@ def with_consistency_retry(
         except AzCliError as exc:
             last_error = exc
             if not is_consistency_error(exc) or attempt >= attempts:
-                raise
+                raise AzCliError(
+                    f"{label} failed after {attempt} attempt(s): {exc}"
+                ) from exc
             time.sleep(sleep_s)
     raise AzCliError(f"{label} failed after {attempts} attempts: {last_error}")
 
@@ -64,7 +72,7 @@ def wait_for_get(path: str, *, label: str | None = None) -> dict[str, Any]:
     def _get() -> dict[str, Any]:
         payload = graph("GET", path)
         if not isinstance(payload, dict) or "id" not in payload:
-            raise AzCliError(f"{resolved_label}: empty or invalid response")
+            raise ConsistencyPending(f"{resolved_label}: empty or invalid response")
         return payload
 
     return with_consistency_retry(_get, label=resolved_label)
@@ -162,34 +170,6 @@ def find_sp_by_app_id(app_id: str) -> dict[str, Any] | None:
     return rows[0] if rows else None
 
 
-def _wait_for_application(app_object_id: str, app_id: str) -> None:
-    """Poll until the application is readable by object id and appId filter."""
-
-    def _ready() -> dict[str, Any]:
-        fetched = graph("GET", f"/applications/{app_object_id}")
-        if not isinstance(fetched, dict):
-            raise AzCliError(f"application {app_object_id} not ready")
-        if fetched.get("appId") != app_id:
-            raise AzCliError(
-                f"application {app_object_id} not ready "
-                f"(expected appId={app_id}, got {fetched.get('appId')})"
-            )
-        by_app_id = graph_list(
-            "/applications",
-            filter_expr=_odata_eq("appId", app_id),
-        )
-        if not any(row.get("id") == app_object_id for row in by_app_id):
-            raise AzCliError(
-                f"application {app_object_id} not yet returned by appId filter"
-            )
-        return fetched
-
-    with_consistency_retry(
-        _ready,
-        label=f"application {app_object_id} (appId={app_id}) visibility",
-    )
-
-
 def _create_service_principal(app_id: str, display_name: str) -> dict[str, Any]:
     """Create SP with retries for NoBackingApplicationObject replication lag."""
 
@@ -200,7 +180,9 @@ def _create_service_principal(app_id: str, display_name: str) -> dict[str, Any]:
         sp = graph("POST", "/servicePrincipals", {"appId": app_id})
         if isinstance(sp, dict) and "id" in sp:
             return sp
-        raise AzCliError(f"failed to create service principal for {display_name}")
+        raise ConsistencyPending(
+            f"service principal create for {display_name} returned no id"
+        )
 
     return with_consistency_retry(
         _create,
@@ -213,33 +195,26 @@ def ensure_application(display_name: str) -> dict[str, str]:
 
     assert_safe_display_name(display_name)
     app = find_by_display_name("applications", display_name)
-    created = False
     if app is None:
         app = graph("POST", "/applications", {"displayName": display_name})
         if not isinstance(app, dict) or "id" not in app:
             raise AzCliError(f"failed to create application {display_name}")
-        created = True
     app_object_id = app["id"]
-    app_id = app.get("appId")
+    # Object-id GET is enough; appId $filter lags and is not required for SP create.
+    fetched = wait_for_get(
+        f"/applications/{app_object_id}",
+        label=f"application {display_name}",
+    )
+    app_id = app.get("appId") or fetched.get("appId")
     if not app_id:
-        fetched = wait_for_get(
-            f"/applications/{app_object_id}",
-            label=f"application {display_name}",
-        )
-        app_id = fetched.get("appId")
-        if not app_id:
-            raise AzCliError(f"application {display_name} missing appId")
-    if created:
-        _wait_for_application(app_object_id, app_id)
-    else:
-        wait_for_get(
-            f"/applications/{app_object_id}",
-            label=f"application {display_name}",
-        )
+        raise AzCliError(f"application {display_name} missing appId")
     sp = find_sp_by_app_id(app_id)
     if sp is None:
         sp = _create_service_principal(app_id, display_name)
-    wait_for_get(f"/servicePrincipals/{sp['id']}", label=f"service principal {display_name}")
+    wait_for_get(
+        f"/servicePrincipals/{sp['id']}",
+        label=f"service principal {display_name}",
+    )
     return {
         "appObjectId": app_object_id,
         "appId": app_id,
