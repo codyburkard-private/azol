@@ -297,8 +297,10 @@ class GraphClientContractTests(unittest.TestCase):
         self.session.request.side_effect = [
             mock_response(status_code=201, payload={"id": "app-obj", "appId": "app-id"}),
             mock_response(status_code=201, payload={"id": "sp-id"}),
-            mock_response(payload={"id": "sp-id"}),  # wait-until-readable GET
+            mock_response(payload={"id": "sp-id"}),  # wait SP readable
             mock_response(payload={"secretText": "secret"}),
+            mock_response(payload={"id": "sp-id"}),  # confirm SP after password
+            mock_response(payload={"id": "app-obj"}),  # confirm app
         ]
         out = self.client.create_new_local_service_principal("azol-live-test")
         self.assertEqual(
@@ -310,7 +312,7 @@ class GraphClientContractTests(unittest.TestCase):
                 "spSecret": "secret",
             },
         )
-        self.assertEqual(self.session.request.call_count, 4)
+        self.assertEqual(self.session.request.call_count, 6)
 
         self.session.request.side_effect = None
         self._set_payload({"id": "sp2"}, status_code=201)

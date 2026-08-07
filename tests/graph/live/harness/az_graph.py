@@ -64,7 +64,8 @@ def with_consistency_retry(
                 ) from exc
             print(
                 f"  directory not ready for {label} "
-                f"(attempt {attempt}/{attempts}); retrying..."
+                f"(attempt {attempt}/{attempts}); retrying...",
+                flush=True,
             )
             time.sleep(sleep_s)
     raise AzCliError(f"{label} failed after {attempts} attempts: {last_error}")
@@ -243,7 +244,8 @@ def wait_until_readable(
         if attempt < attempts:
             print(
                 f"  waiting for {label} to become readable "
-                f"(attempt {attempt}/{attempts}); retrying..."
+                f"(attempt {attempt}/{attempts}); retrying...",
+                flush=True,
             )
             time.sleep(sleep_s)
     raise AzCliError(f"{label} not readable after {attempts} attempt(s): {last_detail}")
@@ -324,7 +326,8 @@ def _create_live_application(display_name: str) -> dict[str, Any]:
         tried_ids.append(app_object_id)
         print(
             f"  created application {display_name} id={app_object_id} "
-            f"(round {round_idx}); waiting until readable..."
+            f"(round {round_idx}); waiting until readable...",
+            flush=True,
         )
         try:
             return wait_until_readable(
@@ -336,7 +339,8 @@ def _create_live_application(display_name: str) -> dict[str, Any]:
         except AzCliError:
             print(
                 f"  application id={app_object_id} still not readable; "
-                f"retrying create (round {round_idx}/{_CREATE_ROUNDS})..."
+                f"retrying create (round {round_idx}/{_CREATE_ROUNDS})...",
+                flush=True,
             )
             continue
     raise AzCliError(

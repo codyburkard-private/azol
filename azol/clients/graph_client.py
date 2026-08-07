@@ -1214,6 +1214,35 @@ class GraphClient(OAuthHTTPClient):
             .values()
         )
 
+    def _wait_for_graph_path(
+        self,
+        path: str,
+        *,
+        label: str,
+        attempts: int = 12,
+        sleep_s: float = 2.0,
+    ) -> dict[str, Any]:
+        """GET path until readable; retry quietly on 404 replication lag."""
+        last_error: Exception | None = None
+        with suppress_http_error_logging():
+            for attempt in range(1, attempts + 1):
+                try:
+                    payload = self.call(path).get().json()
+                    if isinstance(payload, dict) and payload.get("id"):
+                        return payload
+                    raise AzolHTTPError(f"{label}: empty response for {path}")
+                except AzolHTTPError as exc:
+                    last_error = exc
+                    if getattr(exc, "status_code", None) != 404 or attempt >= attempts:
+                        raise
+                    print(
+                        f"  waiting for {label} "
+                        f"(attempt {attempt}/{attempts}); retrying...",
+                        flush=True,
+                    )
+                    time.sleep(sleep_s)
+        raise last_error or AzolHTTPError(f"{label} not readable: {path}")
+
     def create_new_local_service_principal(self, name: str = "inconspicuous") -> dict[str, Any]:
         """Create an application, service principal, and password in this tenant.
 
@@ -1260,7 +1289,8 @@ class GraphClient(OAuthHTTPClient):
                         raise
                     print(
                         f"  directory not ready for service principal create "
-                        f"(attempt {attempt}/8); retrying..."
+                        f"(attempt {attempt}/8); retrying...",
+                        flush=True,
                     )
                     time.sleep(2)
         if not isinstance(sp, dict) or "id" not in sp:
@@ -1268,21 +1298,12 @@ class GraphClient(OAuthHTTPClient):
                 f"failed to create service principal for application {app_id}"
             )
         sp_id = sp["id"]
-        # Wait until the SP is readable before addPassword (same replication lag).
+        self._wait_for_graph_path(
+            f"/servicePrincipals/{sp_id}",
+            label="service principal to become readable",
+        )
+        secret = None
         with suppress_http_error_logging():
-            for attempt in range(1, 9):
-                try:
-                    self.call(f"/servicePrincipals/{sp_id}").get()
-                    break
-                except AzolHTTPError as exc:
-                    if getattr(exc, "status_code", None) != 404 or attempt >= 8:
-                        raise
-                    print(
-                        f"  waiting for service principal to become readable "
-                        f"(attempt {attempt}/8); retrying..."
-                    )
-                    time.sleep(2)
-            secret = None
             for attempt in range(1, 9):
                 try:
                     secret = (
@@ -1297,9 +1318,19 @@ class GraphClient(OAuthHTTPClient):
                         raise
                     print(
                         f"  waiting to add service principal password "
-                        f"(attempt {attempt}/8); retrying..."
+                        f"(attempt {attempt}/8); retrying...",
+                        flush=True,
                     )
                     time.sleep(2)
+        # Do not return ids until both objects are stably GET-able.
+        self._wait_for_graph_path(
+            f"/servicePrincipals/{sp_id}",
+            label="service principal after password create",
+        )
+        self._wait_for_graph_path(
+            f"/applications/{app_object_id}",
+            label="application after service principal create",
+        )
         return {
             "clientId": app_id,
             "appObjectId": app_object_id,

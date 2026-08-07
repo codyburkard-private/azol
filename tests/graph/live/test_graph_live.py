@@ -11,8 +11,8 @@ import unittest
 from graph.live.live_helpers import (
     LiveGraphTestCase,
     eventually,
+    probe_or_skip,
     require_manifest_state,
-    skip_unavailable_graph,
 )
 
 
@@ -137,33 +137,33 @@ class GraphLiveCoreTests(LiveGraphTestCase):
 
 class GraphLivePimTests(LiveGraphTestCase):
     def test_pim_reads(self):
-        try:
+        def _probe():
             self.assertIsInstance(self.client.get_eligible_pim_assignments(), list)
             self.assertIsInstance(self.client.get_active_pim_assignments(), list)
             self.assertIsInstance(self.client.get_current_pim_eligibility(), list)
             self.assertIsInstance(self.client.get_current_pim_activations(), list)
-        except Exception as exc:
-            skip_unavailable_graph(self, exc)
+
+        probe_or_skip(self, _probe)
 
 
 class GraphLiveEntitlementTests(LiveGraphTestCase):
     def test_catalogs_and_packages(self):
-        try:
+        def _probe():
             catalogs = self.client.get_entitlement_management_catalogs()
             self.assertIsInstance(catalogs, list)
             packages = self.client.get_access_packages()
             self.assertIsInstance(packages, list)
-        except Exception as exc:
-            skip_unavailable_graph(self, exc)
+
+        probe_or_skip(self, _probe)
 
 
 class GraphLiveConditionalAccessTests(LiveGraphTestCase):
     def test_conditional_access_policies(self):
-        try:
+        def _probe():
             policies = self.client.get_conditional_access_policies()
             self.assertIsInstance(policies, list)
-        except Exception as exc:
-            skip_unavailable_graph(self, exc)
+
+        probe_or_skip(self, _probe)
 
 
 if __name__ == "__main__":

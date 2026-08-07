@@ -9,6 +9,7 @@ from typing import Any, TypeVar
 
 from azol.clients import GraphClient
 from azol.credentials import AccessToken
+from azol.http.request import suppress_http_error_logging
 
 from graph.live.harness.az_auth import AzCliError, assert_logged_in_for_tenant, get_graph_access_token
 from graph.live.harness.config import DEFAULT_TENANT, load_config
@@ -101,10 +102,21 @@ def eventually(
         if attempt < attempts:
             print(
                 f"  waiting for {label} "
-                f"(attempt {attempt}/{attempts}); retrying..."
+                f"(attempt {attempt}/{attempts}); retrying...",
+                flush=True,
             )
             time.sleep(sleep_s)
     return last
+
+
+def probe_or_skip(test: unittest.TestCase, operation: Callable[[], T]) -> T:
+    """Run a Graph probe; skip quietly on auth/license gaps (no ERROR logs)."""
+    with suppress_http_error_logging():
+        try:
+            return operation()
+        except Exception as exc:
+            skip_unavailable_graph(test, exc)
+            raise  # skipTest raises; keep mypy/type-checkers happy
 
 
 def skip_unavailable_graph(test: unittest.TestCase, exc: BaseException) -> None:
