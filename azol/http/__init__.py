@@ -13,7 +13,12 @@ from azol.http.errors import (
     exception_from_response,
 )
 from azol.http.request import HTTPRequest, OAuthHTTPRequest
-from azol.http.request_builder import HTTPRequestBuilder, OAuthRequestBuilder
+from azol.http.request_builder import (
+    HTTPRequestBuilder,
+    OAuthRequestBuilder,
+    is_absolute_http_url,
+    normalize_request_path,
+)
 from azol.http.result import HttpResult
 from azol.http.session import DEFAULT_TIMEOUT, create_session
 
@@ -32,6 +37,8 @@ __all__ = [
     "OAuthHTTPRequest",
     "HTTPRequestBuilder",
     "OAuthRequestBuilder",
+    "is_absolute_http_url",
+    "normalize_request_path",
     "HttpCall",
     "HttpResult",
     "DEFAULT_TIMEOUT",

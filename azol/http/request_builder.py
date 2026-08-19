@@ -9,6 +9,25 @@ from azol.http.request import HTTPRequest, OAuthHTTPRequest
 from azol.http.session import DEFAULT_TIMEOUT
 
 
+def is_absolute_http_url(value: str) -> bool:
+    """Return True if *value* is an http(s) URL rather than a relative path."""
+    return isinstance(value, str) and value.startswith(("http://", "https://"))
+
+
+def normalize_request_path(path: str) -> str:
+    """Return a path (or absolute URL) suitable for :meth:`HTTPRequestBuilder.path`.
+
+    Absolute http(s) URLs are left unchanged so callers can pass Graph
+    ``@odata.nextLink`` values without joining them onto the client base URL.
+    Relative paths get a leading slash.
+    """
+    if is_absolute_http_url(path):
+        return path
+    if not path.startswith("/"):
+        return f"/{path}"
+    return path
+
+
 class HTTPRequestBuilder:
     """Accumulate request options and ``build()`` an ``HTTPRequest``.
 
@@ -77,10 +96,15 @@ class HTTPRequestBuilder:
         return self.build()
 
     def path(self, path: str) -> "HTTPRequestBuilder":
-        """Set a path relative to ``base_url``."""
-        if not path.startswith("/"):
-            path = f"/{path}"
-        self._path = path
+        """Set a path relative to ``base_url``.
+
+        Absolute ``http://`` / ``https://`` values are treated as complete URLs
+        (same as :meth:`url`) so Graph ``@odata.nextLink`` is not joined onto
+        ``https://graph.microsoft.com/beta``.
+        """
+        if is_absolute_http_url(path):
+            return self.url(path)
+        self._path = normalize_request_path(path)
         self._absolute_url = None
         return self
 

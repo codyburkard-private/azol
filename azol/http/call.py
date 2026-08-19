@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Mapping, Optional, Set
 
+from azol.http.request_builder import normalize_request_path
 from azol.http.result import HttpResult
 
 if TYPE_CHECKING:
@@ -29,9 +30,7 @@ class HttpCall:
         self._path: Optional[str] = None
         self._absolute_url: Optional[str] = url
         if path is not None:
-            if path and not path.startswith("/"):
-                path = f"/{path}"
-            self._path = path
+            self._path = normalize_request_path(path)
             self._absolute_url = None
         self._exception_cls = exception_cls
         self._next_link_key = next_link_key
@@ -42,9 +41,7 @@ class HttpCall:
         self._data: Any = None
 
     def path(self, path: str) -> "HttpCall":
-        if path and not path.startswith("/"):
-            path = f"/{path}"
-        self._path = path
+        self._path = normalize_request_path(path)
         self._absolute_url = None
         return self
 

@@ -60,6 +60,20 @@ class GraphCallTests(unittest.TestCase):
         )
         self.assertEqual(items, [{"id": "1"}, {"id": "2"}])
         self.assertEqual(self.client._session.request.call_count, 2)
+        second_url = self.client._session.request.call_args_list[1].args[1]
+        self.assertEqual(
+            second_url,
+            "https://graph.microsoft.com/beta/users?$skiptoken=abc",
+        )
+        self.assertNotIn("betahttps:", second_url)
+
+    def test_get_absolute_next_link_is_not_joined_to_base(self):
+        next_link = "https://graph.microsoft.com/beta/groups?$skiptoken=abc"
+        GraphCall(self.client, next_link).get()
+        url = self.client._session.request.call_args.args[1]
+        self.assertEqual(url, next_link)
+        self.assertNotIn("betahttps:", url)
+        self.assertNotIn("/beta/beta/", url)
 
     def test_get_json_single_entity(self):
         self.client._session.request.return_value = _mock_response(

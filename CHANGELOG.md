@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `GraphClient.get()` and path builders treat absolute `http(s)` URLs
+  (including Graph `@odata.nextLink`) as complete request URLs. Joining a
+  next-link onto `https://graph.microsoft.com/beta` produced Graph
+  `ResourceNotFound` with `Invalid version: betahttps:`.
+
 ## [0.6.0] - TBD
 
 ### Changed

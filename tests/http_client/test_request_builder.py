@@ -128,6 +128,17 @@ class HTTPRequestBuilderTests(unittest.TestCase):
             "https://graph.microsoft.com/beta/users?$skiptoken=abc",
         )
 
+    def test_path_with_absolute_url_is_not_joined_to_base(self):
+        next_link = "https://graph.microsoft.com/beta/groups?$skiptoken=abc"
+        request = (
+            HTTPRequestBuilder(self.session, base_url="https://graph.microsoft.com/beta")
+            .path(next_link)
+            .raise_on_error(False)
+            .get()
+        )
+        self.assertEqual(request.url, next_link)
+        self.assertNotIn("betahttps:", request.url)
+
     def test_expect_raises_on_mismatch(self):
         self.session.request.return_value = _mock_response(
             status_code=404, text='{"error":"missing"}'
