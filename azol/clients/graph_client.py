@@ -1477,6 +1477,8 @@ class GraphClient(OAuthHTTPClient):
 
         Args:
             path: Graph API path, optionally including a query string.
+                Absolute ``http(s)`` URLs (including ``@odata.nextLink``)
+                are sent as-is and are not joined onto the Graph base URL.
             headers: Optional extra headers.
 
         Returns:
@@ -1486,6 +1488,11 @@ class GraphClient(OAuthHTTPClient):
             AzolHTTPError: An error occurred accessing the Graph API.
         """
         headers = dict(headers) if headers else {}
+        # Absolute nextLinks must be used verbatim. Joining them onto
+        # https://graph.microsoft.com/beta produces Graph ResourceNotFound
+        # with "Invalid version: betahttps:" (or /beta/beta/ after urlparse).
+        if path.startswith(("http://", "https://")):
+            return self.call(path).headers(headers).get().json()
         if "?" in path:
             parsed = urlparse(path)
             rel = parsed.path if parsed.path.startswith("/") else f"/{parsed.path}"

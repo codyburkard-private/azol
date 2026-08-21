@@ -4,6 +4,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Iterable, List, Optional, Set
 
 from azol.clients.odata.request import ODataHTTPRequest
+from azol.http.request_builder import normalize_request_path
 
 if TYPE_CHECKING:
     from azol.clients.oauth_http_client import OAuthHTTPClient
@@ -24,9 +25,7 @@ class ODataQueryBuilder:
         exception_cls: Optional[type] = None,
     ):
         self._client = client
-        if not path.startswith("/"):
-            path = f"/{path}"
-        self._path = path
+        self._path = normalize_request_path(path)
         self._exception_cls = exception_cls
         self._params: dict = {}
         self._headers: dict = {}

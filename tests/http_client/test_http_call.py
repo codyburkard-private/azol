@@ -89,6 +89,12 @@ class HttpCallTests(unittest.TestCase):
         url = self.client._session.request.call_args.args[1]
         self.assertEqual(url, "https://other.example/api")
 
+    def test_constructor_absolute_path_is_not_joined_to_base(self):
+        next_link = "https://example.com/items?skip=1"
+        HttpCall(self.client, next_link).get()
+        url = self.client._session.request.call_args.args[1]
+        self.assertEqual(url, next_link)
+
     def test_post_expect_and_body(self):
         self.client._session.request.return_value = _mock_response(
             status_code=202, payload={"ok": True}

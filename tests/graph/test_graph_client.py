@@ -44,6 +44,21 @@ class GraphClientContractTests(unittest.TestCase):
         self.assertEqual(last_params(self.session)["$select"], "id")
         self.assertEqual(last_params(self.session)["$top"], "1")
 
+    def test_get_absolute_next_link_is_not_joined_to_base(self):
+        """Collectors page by passing Graph @odata.nextLink into get().
+
+        Joining that URL onto https://graph.microsoft.com/beta produces
+        ResourceNotFound / Invalid version: betahttps:.
+        """
+        next_link = "https://graph.microsoft.com/beta/groups?$skiptoken=abc"
+        self._set_payload({"value": [{"id": "g2"}]})
+        self.client.get(next_link)
+        url = last_url(self.session)
+        self.assertEqual(url, next_link)
+        self.assertNotIn("betahttps:", url)
+        self.assertNotIn("/beta/beta/", url)
+        self.assertFalse(last_params(self.session))
+
     def test_post_put_patch_delete(self):
         self._set_payload({"ok": True})
         self.client.post("/x", {"a": 1})
@@ -206,6 +221,23 @@ class GraphClientContractTests(unittest.TestCase):
         self.assertTrue(
             last_url(self.session).endswith("/directoryObjects/o1/transitiveMemberOf")
         )
+
+    def test_get_all_groups_follows_next_link_as_absolute_url(self):
+        next_link = "https://graph.microsoft.com/beta/groups?$skiptoken=abc"
+        self.session.request.side_effect = [
+            mock_response(
+                payload={
+                    "value": [{"id": "g1", "displayName": "A"}],
+                    "@odata.nextLink": next_link,
+                }
+            ),
+            mock_response(payload={"value": [{"id": "g2", "displayName": "B"}]}),
+        ]
+        groups = self.client.get_all_groups()
+        self.assertEqual([group["id"] for group in groups], ["g1", "g2"])
+        second_url = self.session.request.call_args_list[1].args[1]
+        self.assertEqual(second_url, next_link)
+        self.assertNotIn("betahttps:", second_url)
 
     def test_group_member_and_owner_mutations(self):
         self.session.request.return_value = mock_response(status_code=204, payload=None)
